@@ -17,7 +17,6 @@
     "react-transition-group": "2.4.0"
   },
   "devDependencies": {
-    "babel-cli": "6.26.0",
     "babel-core": "6.26.3",
     "babel-eslint": "8.2.5",
     "babel-loader": "7.1.4",
@@ -27,8 +26,7 @@
     "eslint-loader": "2.0.0",
     "eslint-plugin-import": "2.13.0",
     "jsx-loader": "0.13.2",
-    "lodash": "^4.17.13",
-    "webpack": "4.12.2"
+    "lodash": "^4.17.13"
   },
   "engines": {
     "node": "8.11.3",
