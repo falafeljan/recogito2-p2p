@@ -1,0 +1,29 @@
+FROM hseeberger/scala-sbt:8u151-2.12.4-1.0.4 AS build
+
+# <https://github.com/Wadjetz/scala-sbt-nodejs/blob/master/Dockerfile>
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
+    apt install -q -y nodejs libvips-tools && \
+    apt-get clean
+
+RUN mkdir -p /usr/share/recogito
+WORKDIR /usr/share/recogito
+
+ADD project ./project
+ADD build.sbt webpack.sbt ./
+# We expect one failure due to jai_core being wrongly resolved
+RUN sbt update; exit 0
+RUN sbt update
+
+ADD ./package.json ./package-lock.json ./
+RUN npm install -g webpack webpack-cli
+RUN npm ci
+
+COPY ./ ./
+RUN sbt compile
+
+EXPOSE 9000
+
+# `sbt run` will exit in an environment without speudo-tty, see
+# <https://stackoverflow.com/a/30177216>. make sure to specify a faux stdin,
+# like `docker run -a stdin` or `stdin_open` (for compose).
+ENTRYPOINT ["sbt", "run"]
