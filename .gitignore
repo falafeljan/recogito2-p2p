@@ -5,6 +5,7 @@
 /conf/imprint
 /logs
 /node_modules
+/ops/docker/.env
 /ops/vagrant/.vagrant
 /target
 /uploads
