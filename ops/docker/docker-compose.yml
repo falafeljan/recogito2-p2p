@@ -8,12 +8,12 @@ services:
       - ../../:/opt/recogito
       - recogitodata:/opt/recogito/uploads/
     ports:
-      networks:
-        - default
-        - backend
-      # will exit otherwise, see <https://stackoverflow.com/a/30177216>
-      stdin_open: true
       - 9000:9000
+    networks:
+      - default
+      - backend
+    # will exit otherwise, see <https://stackoverflow.com/a/30177216>
+    stdin_open: true
 
   db:
     image: postgres
