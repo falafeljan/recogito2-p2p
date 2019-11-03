@@ -5,7 +5,8 @@ services:
       context: ../../
       dockerfile: ./Dockerfile-dev
     volumes:
-      - ../../:/opt/recogito
+      - ../../app/assets/:/usr/share/recogito/app/assets/
+      - ../../public/:/usr/share/recogito/public/
       - recogitodata:/opt/recogito/uploads/
     ports:
       - 9000:9000
