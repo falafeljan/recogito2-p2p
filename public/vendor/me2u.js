@@ -17,7 +17,7 @@ module.exports = {
   RequestSwarm: RequestSwarm
 };
 
-},{"./lib/request/browser-swarm":6}],3:[function(require,module,exports){
+},{"./lib/request/browser-swarm":7}],3:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
@@ -215,6 +215,44 @@ module.exports = {
 };
 
 },{"assert":23,"crypto":433,"events":476,"length-prefixed-stream":503,"pump":554,"stream":577,"uuid/v1":601}],4:[function(require,module,exports){
+"use strict";
+
+var _require = require('url'),
+    parseUrl = _require.parse;
+
+var pathPattern = /^(\/\w+)?\/annotations\/(\w+)\.jsonld$/;
+
+var parseId = function parseId(url) {
+  var _parseUrl = parseUrl(url),
+      protocol = _parseUrl.protocol,
+      pathname = _parseUrl.pathname;
+
+  var results = pathname.match(pathPattern);
+
+  if (results !== null) {
+    if (results[1] && protocol !== 'hypermerge:' || !results[1] && protocol === 'hypermerge:') {
+      return null;
+    } else if (results[1]) {
+      return {
+        docId: results[1].substr(1),
+        annotationId: results[2]
+      };
+    }
+
+    return {
+      docId: null,
+      annotationId: results[2]
+    };
+  }
+
+  return null;
+};
+
+module.exports = {
+  parseId: parseId
+};
+
+},{"url":596}],5:[function(require,module,exports){
 (function (Buffer){
 "use strict";
 
@@ -248,7 +286,8 @@ exports.ResponseCode = {
   BAD_REQUEST: 3,
   CREATED: 4,
   UPDATED: 5,
-  DELETED: 6
+  DELETED: 6,
+  INTERNAL_ERROR: 7
 };
 var DiscoveryEvent = exports.DiscoveryEvent = {
   buffer: true,
@@ -562,19 +601,9 @@ function defined(val) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":61,"protocol-buffers-encodings":543}],5:[function(require,module,exports){
+},{"buffer":61,"protocol-buffers-encodings":543}],6:[function(require,module,exports){
 (function (Buffer){
 "use strict";
-
-function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
-function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
-
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
-
-function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
-
-function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
 
@@ -588,27 +617,37 @@ function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (O
 
 function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(source, true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(source).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
-
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
 function _get(target, property, receiver) { if (typeof Reflect !== "undefined" && Reflect.get) { _get = Reflect.get; } else { _get = function _get(target, property, receiver) { var base = _superPropBase(target, property); if (!base) return; var desc = Object.getOwnPropertyDescriptor(base, property); if (desc.get) { return desc.get.call(receiver); } return desc.value; }; } return _get(target, property, receiver || target); }
 
 function _superPropBase(object, property) { while (!Object.prototype.hasOwnProperty.call(object, property)) { object = _getPrototypeOf(object); if (object === null) break; } return object; }
 
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
+function _wrapNativeSuper(Class) { var _cache = typeof Map === "function" ? new Map() : undefined; _wrapNativeSuper = function _wrapNativeSuper(Class) { if (Class === null || !_isNativeFunction(Class)) return Class; if (typeof Class !== "function") { throw new TypeError("Super expression must either be null or a function"); } if (typeof _cache !== "undefined") { if (_cache.has(Class)) return _cache.get(Class); _cache.set(Class, Wrapper); } function Wrapper() { return _construct(Class, arguments, _getPrototypeOf(this).constructor); } Wrapper.prototype = Object.create(Class.prototype, { constructor: { value: Wrapper, enumerable: false, writable: true, configurable: true } }); return _setPrototypeOf(Wrapper, Class); }; return _wrapNativeSuper(Class); }
+
+function isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
+
+function _construct(Parent, args, Class) { if (isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
+
+function _isNativeFunction(fn) { return Function.toString.call(fn).indexOf("[native code]") !== -1; }
+
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
 var assert = require('assert');
 
@@ -629,13 +668,34 @@ var requestTypeMapping = {
   PUT: 'UPDATED',
   DELETE: 'DELETED'
 };
-var responseCodes = Object.keys(ResponseCode).map(function (code) {
-  return code.toLowerCase();
-});
 
 var decodeData = function decodeData(data) {
-  return data.length > 0 ? JSON.parse(Buffer.from(data).toString()) : null;
+  return data !== null && data.length > 0 ? JSON.parse(Buffer.from(data).toString()) : null;
 };
+
+var responseMessage = function responseMessage(code) {
+  return Object.keys(ResponseCode)[Object.values(ResponseCode).indexOf(code)];
+};
+
+var RequestError =
+/*#__PURE__*/
+function (_Error) {
+  _inherits(RequestError, _Error);
+
+  function RequestError(message, code, path, data) {
+    var _this;
+
+    _classCallCheck(this, RequestError);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(RequestError).call(this, message));
+    _this.code = code;
+    _this.path = path;
+    _this.data = data;
+    return _this;
+  }
+
+  return RequestError;
+}(_wrapNativeSuper(Error));
 
 var AbstractRequestSwarm =
 /*#__PURE__*/
@@ -643,36 +703,37 @@ function (_AbstractSwarm) {
   _inherits(AbstractRequestSwarm, _AbstractSwarm);
 
   function AbstractRequestSwarm(docUrl, swarm, opts) {
-    var _this;
+    var _this2;
 
     _classCallCheck(this, AbstractRequestSwarm);
 
-    _this = _possibleConstructorReturn(this, _getPrototypeOf(AbstractRequestSwarm).call(this, _objectSpread({}, opts, {
+    _this2 = _possibleConstructorReturn(this, _getPrototypeOf(AbstractRequestSwarm).call(this, _objectSpread({}, opts, {
       topic: "annotations-".concat(docUrl),
       lookup: true,
       announce: false,
       swarm: swarm
     })));
 
-    _defineProperty(_assertThisInitialized(_this), "lastConnectionId", 0);
+    _defineProperty(_assertThisInitialized(_this2), "lastConnectionId", 0);
 
-    _defineProperty(_assertThisInitialized(_this), "connections", new Map());
+    _defineProperty(_assertThisInitialized(_this2), "connections", new Map());
 
-    _defineProperty(_assertThisInitialized(_this), "lastRequestId", 0);
+    _defineProperty(_assertThisInitialized(_this2), "lastRequestId", 0);
 
-    _defineProperty(_assertThisInitialized(_this), "currentRequestId", null);
+    _defineProperty(_assertThisInitialized(_this2), "currentRequestId", null);
 
-    _defineProperty(_assertThisInitialized(_this), "requestQueue", new Map());
+    _defineProperty(_assertThisInitialized(_this2), "requestQueue", new Map());
 
-    _this.docUrl = docUrl;
-    return _this;
+    _this2.docUrl = docUrl;
+    return _this2;
   }
 
   _createClass(AbstractRequestSwarm, [{
     key: "createRequest",
-    value: function createRequest(method, path, data) {
-      var _this2 = this;
+    value: function createRequest(method, path) {
+      var _this3 = this;
 
+      var data = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
       var requestId = this.lastRequestId++;
       this.requestQueue.set(requestId, {
         method: method,
@@ -684,12 +745,22 @@ function (_AbstractSwarm) {
         this._workQueue(this.firstConnectionId);
       }
 
-      return new Promise(function (resolve) {
-        return _this2.on('worked-request', function (id, res) {
-          if (id === requestId) {
-            resolve(res);
+      return new Promise(function (resolve, reject) {
+        var handleProcessed = function handleProcessed(err, id, res) {
+          if (id !== requestId) {
+            return;
+          } else {
+            _this3.removeListener('processed-request', handleProcessed);
+
+            if (err) {
+              reject(err);
+            } else {
+              resolve(res);
+            }
           }
-        });
+        };
+
+        _this3.on('processed-request', handleProcessed);
       });
     }
   }, {
@@ -707,20 +778,20 @@ function (_AbstractSwarm) {
   }, {
     key: "_handleConnection",
     value: function _handleConnection(socket) {
-      var _this3 = this;
+      var _this4 = this;
 
       var stream = _get(_getPrototypeOf(AbstractRequestSwarm.prototype), "_handleConnection", this).call(this, socket);
 
       var id = this.lastConnectionId++;
 
-      var createRequest = this._createRequestMethod(stream);
+      var createRequest = this._createRequestMethod(stream).bind(this);
 
       this.connections.set(id, {
         socket: socket,
         createRequest: createRequest
       });
       socket.on('close', function () {
-        _this3.connections["delete"](id);
+        _this4.connections["delete"](id);
       });
 
       if (this.requestQueue.size > 0 && this.currentRequestId === null) {
@@ -746,7 +817,7 @@ function (_AbstractSwarm) {
 
             case 5:
               if (_iteratorNormalCompletion = (_step = _iterator.next()).done) {
-                _context.next = 18;
+                _context.next = 24;
                 break;
               }
 
@@ -754,62 +825,72 @@ function (_AbstractSwarm) {
               debug("working request item ".concat(requestId));
               this.currentRequestId = requestId;
               _this$connections$get = this.connections.get(connectionId), createRequest = _this$connections$get.createRequest;
-              _context.next = 12;
+              _context.prev = 10;
+              _context.next = 13;
               return regeneratorRuntime.awrap(createRequest(method, path, data));
 
-            case 12:
+            case 13:
               res = _context.sent;
-              this.requestQueue["delete"](requestId);
-              this.emit('worked-request', requestId, res);
+              this.emit('processed-request', null, requestId, res);
+              _context.next = 20;
+              break;
 
-            case 15:
+            case 17:
+              _context.prev = 17;
+              _context.t0 = _context["catch"](10);
+              this.emit('processed-request', _context.t0, requestId);
+
+            case 20:
+              this.requestQueue["delete"](requestId);
+
+            case 21:
               _iteratorNormalCompletion = true;
               _context.next = 5;
               break;
 
-            case 18:
-              _context.next = 24;
+            case 24:
+              _context.next = 30;
               break;
 
-            case 20:
-              _context.prev = 20;
-              _context.t0 = _context["catch"](3);
+            case 26:
+              _context.prev = 26;
+              _context.t1 = _context["catch"](3);
               _didIteratorError = true;
-              _iteratorError = _context.t0;
+              _iteratorError = _context.t1;
 
-            case 24:
-              _context.prev = 24;
-              _context.prev = 25;
+            case 30:
+              _context.prev = 30;
+              _context.prev = 31;
 
               if (!_iteratorNormalCompletion && _iterator["return"] != null) {
                 _iterator["return"]();
               }
 
-            case 27:
-              _context.prev = 27;
+            case 33:
+              _context.prev = 33;
 
               if (!_didIteratorError) {
-                _context.next = 30;
+                _context.next = 36;
                 break;
               }
 
               throw _iteratorError;
 
-            case 30:
-              return _context.finish(27);
+            case 36:
+              return _context.finish(33);
 
-            case 31:
-              return _context.finish(24);
+            case 37:
+              return _context.finish(30);
 
-            case 32:
+            case 38:
               this.currentRequestId = null;
 
-            case 33:
+            case 39:
             case "end":
               return _context.stop();
           }
         }
-      }, null, this, [[3, 20, 24, 32], [25,, 27, 31]]);
+      }, null, this, [[3, 26, 30, 38], [10, 17], [31,, 33, 37]]);
     }
   }, {
     key: "_createRequestMethod",
@@ -817,28 +898,21 @@ function (_AbstractSwarm) {
       return function (method, path, data) {
         return new Promise(function (resolve, reject) {
           var reqMethod = method.toUpperCase();
+          var goodCode = ResponseCode[requestTypeMapping[reqMethod]];
           debug("".concat(reqMethod, " ").concat(path));
+          stream.once('response', function (_ref) {
+            var code = _ref.code,
+                path = _ref.path,
+                data = _ref.data;
+            var decodedData = decodeData(data);
 
-          var otherCodes = _toConsumableArray(responseCodes);
+            if (code !== goodCode) {
+              reject(new RequestError('Unexpected response code', responseMessage(code), path, decodedData));
+              return;
+            }
 
-          var goodCode = requestTypeMapping[reqMethod].toLowerCase();
-          otherCodes.splice(otherCodes.indexOf(goodCode), 1);
-          stream.once(goodCode, function (_ref) {
-            var data = _ref.data;
-            resolve(decodeData(data));
+            resolve(decodedData);
           });
-
-          for (var type in otherCodes) {
-            stream.once(type, function (code, path, data) {
-              return reject(new Error({
-                message: 'unexpected responde code',
-                code: code,
-                path: path,
-                data: decodeData(data)
-              }));
-            });
-          }
-
           stream.request(reqMethod, path, data);
         });
       };
@@ -862,7 +936,7 @@ module.exports = {
 };
 
 }).call(this,require("buffer").Buffer)
-},{"../abstract-swarm":3,"../messages":4,"./stream":7,"assert":23,"buffer":61,"debug":434}],6:[function(require,module,exports){
+},{"../abstract-swarm":3,"../messages":5,"./stream":8,"assert":23,"buffer":61,"debug":434}],7:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
@@ -899,7 +973,7 @@ var _require = require('hyperswarm-ws'),
 var _require2 = require('./abstract-swarm'),
     AbstractRequestSwarm = _require2.AbstractRequestSwarm;
 
-var _require3 = require('../util/annotation'),
+var _require3 = require('../annotation/meta'),
     parseId = _require3.parseId;
 
 var gatewayUrls = ['wss://hyperswarm-ws-gateway.kassel.works'];
@@ -1039,7 +1113,7 @@ module.exports = {
   RequestSwarm: RequestSwarm
 };
 
-},{"../util/annotation":8,"./abstract-swarm":5,"hyperswarm-ws":496}],7:[function(require,module,exports){
+},{"../annotation/meta":4,"./abstract-swarm":6,"hyperswarm-ws":496}],8:[function(require,module,exports){
 (function (Buffer){
 "use strict";
 
@@ -1114,7 +1188,7 @@ function (_Duplex) {
           var name = _Object$keys[_i];
 
           if (ResponseCode[name] === decoded.code) {
-            this.emit(name.toLowerCase(), decoded);
+            this.emit('response', decoded);
           }
         }
 
@@ -1136,45 +1210,7 @@ module.exports = {
 };
 
 }).call(this,require("buffer").Buffer)
-},{"../messages":4,"buffer":61,"stream":577}],8:[function(require,module,exports){
-"use strict";
-
-var _require = require('url'),
-    parseUrl = _require.parse;
-
-var pathPattern = /^(\/\w+)?\/annotations\/(\w+)\.jsonld$/;
-
-var parseId = function parseId(url) {
-  var _parseUrl = parseUrl(url),
-      protocol = _parseUrl.protocol,
-      pathname = _parseUrl.pathname;
-
-  var results = pathname.match(pathPattern);
-
-  if (results !== null) {
-    if (results[1] && protocol !== 'hypermerge:' || !results[1] && protocol === 'hypermerge:') {
-      return null;
-    } else if (results[1]) {
-      return {
-        docId: results[1].substr(1),
-        annotationId: results[2]
-      };
-    }
-
-    return {
-      docId: null,
-      annotationId: results[2]
-    };
-  }
-
-  return null;
-};
-
-module.exports = {
-  parseId: parseId
-};
-
-},{"url":596}],9:[function(require,module,exports){
+},{"../messages":5,"buffer":61,"stream":577}],9:[function(require,module,exports){
 var asn1 = exports;
 
 asn1.bignum = require('bn.js');
