@@ -30,12 +30,12 @@ services:
   # <https://www.elastic.co/guide/en/elasticsearch/reference/5.6/docker.html>
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:5.6.16
-    container_name: elasticsearch
     environment:
       - cluster.name=docker-cluster
       - xpack.security.enabled=false
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.type=single-node
     volumes:
       - esdata:/usr/share/elasticsearch/data
     networks:
@@ -44,10 +44,6 @@ services:
       memlock:
         soft: -1
         hard: -1
-    deploy:
-      resources:
-        limits:
-          memory: 1g
 
 networks:
   backend:
