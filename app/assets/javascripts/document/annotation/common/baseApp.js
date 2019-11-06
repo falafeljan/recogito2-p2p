@@ -34,14 +34,6 @@ define([
     };
 
     return PlaceUtils.initGazetteers().done(function() {
-      var promise2 = API.listAnnotationsInPart(
-        Config.documentId,
-        Config.partSequenceNo
-      );
-      promise2.then(annotations =>
-        console.log('FROM API', JSON.stringify(annotations, null, 2))
-      );
-
       var promise = new Promise(resolve => {
         self.notebook.on('ready', () => {
           self.notebook.getAnnotations().then(resolve);
@@ -91,10 +83,11 @@ define([
   BaseApp.prototype.upsertAnnotation = function(annotationStub) {
     var self = this;
 
-    const mutate =
-      typeof annotationStub.id !== 'undefined'
-        ? this.notebook.updateAnnotation
-        : this.notebook.createAnnotation;
+    const mutate = function(annotation) {
+      return typeof annotation.id !== 'undefined'
+        ? self.notebook.updateAnnotation(annotation)
+        : self.notebook.createAnnotation(annotation);
+    };
     self.header.showStatusSaving();
 
     mutate(annotationStub)

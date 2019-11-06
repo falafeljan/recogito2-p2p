@@ -161,7 +161,7 @@ define([
 
     this.loadAnnotations(loadIndicator, function(annotationsPromise) {
       return annotationsPromise
-        .done(function(annotations) {
+        .then(function(annotations) {
           toolbar.initTimefilter(annotations);
         })
         .then(relationsLayer.init);
