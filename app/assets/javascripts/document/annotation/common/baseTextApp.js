@@ -11,7 +11,7 @@ define([
   'document/annotation/common/selection/reapply/reapply',
   'document/annotation/common/baseApp',
   'document/annotation/text/page/toolbar',
-  'document/annotation/text/relations/relationsLayer'
+  'document/annotation/text/relations/relationsLayer',
 ], function(
   Formatting,
   AnnotationUtils,
@@ -25,128 +25,123 @@ define([
   Reapply,
   BaseApp,
   Toolbar,
-  RelationsLayer) {
-
+  RelationsLayer
+) {
   var App = function(contentNode, highlighter, selector, phraseAnnotator) {
-
     var self = this,
+      annotationView = new AnnotationView(),
+      annotations = annotationView.readOnly(),
+      loadIndicator = new LoadIndicator(),
+      containerNode = document.getElementById('main'),
+      toolbar = new Toolbar(jQuery('.header-toolbar')),
+      editor = Config.writeAccess
+        ? new WriteEditor(containerNode, annotations, selector)
+        : new ReadEditor(containerNode, annotations),
+      reapply = new Reapply(phraseAnnotator, annotations),
+      colorschemeStylesheet = jQuery('#colorscheme'),
+      relationsLayer = new RelationsLayer(
+        containerNode,
+        document.getElementById('relations')
+      );
 
-        annotationView = new AnnotationView(),
+    var initPage = function() {
+      var storedColorscheme = localStorage.getItem(
+          'r2.document.edit.colorscheme'
+        ),
+        colorscheme = storedColorscheme ? storedColorscheme : 'BY_STATUS';
 
-        annotations = annotationView.readOnly(),
+      setColorscheme(colorscheme);
+      toolbar.setCurrentColorscheme(colorscheme);
 
-        loadIndicator = new LoadIndicator(),
+      loadIndicator.init(containerNode);
 
-        containerNode = document.getElementById('main'),
+      if (Config.IS_TOUCH) contentNode.className = 'touch';
 
-        toolbar = new Toolbar(jQuery('.header-toolbar')),
+      Formatting.initTextDirection(contentNode);
+    };
+    var setColorscheme = function(mode) {
+      var currentCSSPath = colorschemeStylesheet.attr('href'),
+        basePath = currentCSSPath.substr(0, currentCSSPath.lastIndexOf('/'));
 
-        editor = (Config.writeAccess) ?
-          new WriteEditor(containerNode, annotations, selector) :
-          new ReadEditor(containerNode, annotations),
+      highlighter.setColorscheme(false);
 
-        reapply = new Reapply(phraseAnnotator, annotations),
+      if (mode === 'BY_TYPE') {
+        colorschemeStylesheet.attr('href', basePath + '/colorByType.css');
+      } else if (mode === 'BY_STATUS') {
+        colorschemeStylesheet.attr('href', basePath + '/colorByStatus.css');
+      } else {
+        colorschemeStylesheet.attr('href', basePath + '/colorByProperty.css');
+        highlighter.setColorscheme(mode); // All others are property-based schemes!
+      }
+    };
 
-        colorschemeStylesheet = jQuery('#colorscheme'),
+    var onColorschemeChanged = function(mode) {
+      setColorscheme(mode);
+      localStorage.setItem('r2.document.edit.colorscheme', mode);
+    };
 
-        relationsLayer = new RelationsLayer(containerNode, document.getElementById('relations')),
+    var onCreateAnnotation = function(selection) {
+      // Store the annotation first
+      self.onCreateAnnotation(selection);
 
-        initPage = function() {
-          var storedColorscheme = localStorage.getItem('r2.document.edit.colorscheme'),
-              colorscheme = (storedColorscheme) ? storedColorscheme : 'BY_STATUS';
+      // Then prompt the user if they want to re-apply across the doc
+      reapply.reapplyIfNeeded(selection.annotation);
+    };
 
-          setColorscheme(colorscheme);
-          toolbar.setCurrentColorscheme(colorscheme);
+    var onUpdateAnnotation = function(annotationStub) {
+      self.onUpdateAnnotation(annotationStub);
+      reapply.reapplyIfNeeded(annotationStub);
+    };
 
-          loadIndicator.init(containerNode);
+    var onDeleteAnnotation = function(annotation) {
+      relationsLayer.deleteRelationsTo(annotation.annotation_id);
+      self.onDeleteAnnotation(annotation);
+      reapply.reapplyDelete(annotation);
+    };
 
-          if (Config.IS_TOUCH)
-            contentNode.className = 'touch';
+    var onUpdateRelations = function(annotation) {
+      self.upsertAnnotation(annotation);
+    };
 
-          Formatting.initTextDirection(contentNode);
-        },
+    var onAnnotationModeChanged = function(m) {
+      if (m.mode === 'RELATIONS') {
+        editor.close();
+        selector.setEnabled(false);
+        relationsLayer.setDrawingEnabled(true);
+      } else {
+        selector.setEnabled(true);
+        relationsLayer.setDrawingEnabled(false);
+        editor.setAnnotationMode(m);
+      }
+    };
 
-        setColorscheme = function(mode) {
-          var currentCSSPath = colorschemeStylesheet.attr('href'),
-              basePath = currentCSSPath.substr(0, currentCSSPath.lastIndexOf('/'));
+    var onTimefilterChanged = function(newerThan) {
+      var content = jQuery('#content');
 
-          highlighter.setColorscheme(false);
+      // Clear filter
+      annotations.forEach(function(annotation) {
+        self.highlighter.removeClass(annotation, 'in-filter');
+      });
 
-          if (mode === 'BY_TYPE') {
-            colorschemeStylesheet.attr('href', basePath + '/colorByType.css');
-          } else if (mode === 'BY_STATUS') {
-            colorschemeStylesheet.attr('href', basePath + '/colorByStatus.css');
-          } else {
-            colorschemeStylesheet.attr('href', basePath + '/colorByProperty.css');
-            highlighter.setColorscheme(mode); // All others are property-based schemes!
-          }
-        },
+      annotations
+        .filter(function(annotation) {
+          var lastModified = new Date(annotation.last_modified_at);
+          return lastModified >= newerThan;
+        })
+        .forEach(function(annotation) {
+          self.highlighter.addClass(annotation, 'in-filter');
+        });
 
-        onColorschemeChanged = function(mode) {
-          setColorscheme(mode);
-          localStorage.setItem('r2.document.edit.colorscheme', mode);
-        },
-
-        onCreateAnnotation = function(selection) {
-          // Store the annotation first
-          self.onCreateAnnotation(selection);
-
-          // Then prompt the user if they want to re-apply across the doc
-          reapply.reapplyIfNeeded(selection.annotation);
-        },
-
-        onUpdateAnnotation = function(annotationStub) {
-          self.onUpdateAnnotation(annotationStub);
-          reapply.reapplyIfNeeded(annotationStub);
-        },
-
-        onDeleteAnnotation = function(annotation) {
-          relationsLayer.deleteRelationsTo(annotation.annotation_id);
-          self.onDeleteAnnotation(annotation);
-          reapply.reapplyDelete(annotation);
-        },
-
-        onUpdateRelations = function(annotation) {
-          self.upsertAnnotation(annotation);
-        },
-
-        onAnnotationModeChanged = function(m) {
-          if (m.mode === 'RELATIONS') {
-            editor.close();
-            selector.setEnabled(false);
-            relationsLayer.setDrawingEnabled(true);
-          } else {
-            selector.setEnabled(true);
-            relationsLayer.setDrawingEnabled(false);
-            editor.setAnnotationMode(m);
-          }
-        },
-
-        onTimefilterChanged = function(newerThan) {
-          var content = jQuery('#content');
-
-          // Clear filter
-          annotations.forEach(function(annotation) {
-            self.highlighter.removeClass(annotation, 'in-filter');
-          });
-
-          annotations.filter(function(annotation) {
-            var lastModified = new Date(annotation.last_modified_at);
-            return lastModified >= newerThan;
-          }).forEach(function(annotation) {
-            self.highlighter.addClass(annotation, 'in-filter');
-          });
-          
-          // TODO clearing filter completely?
-          content.addClass('filtered');
-        };
+      // TODO clearing filter completely?
+      content.addClass('filtered');
+    };
 
     // Toolbar events
     toolbar.on('annotationModeChanged', onAnnotationModeChanged);
     toolbar.on('colorschemeChanged', onColorschemeChanged);
     toolbar.on('timefilterChanged', onTimefilterChanged);
 
-    BaseApp.apply(this, [ annotationView, highlighter, selector ]);
+    BaseApp.apply(this, [annotationView, highlighter, selector]);
 
     selector.on('select', editor.openSelection);
 
@@ -164,15 +159,12 @@ define([
 
     initPage();
 
-    PlaceUtils.initGazetteers().done(function() {
-      API.listAnnotationsInPart(Config.documentId, Config.partSequenceNo)
-         .done(function(annotations) {
-           toolbar.initTimefilter(annotations);
-           self.onAnnotationsLoaded(annotations);
-         })
-         .then(relationsLayer.init)
-         .then(loadIndicator.destroy)
-         .fail(self.onAnnotationsLoadError.bind(self)).then(loadIndicator.destroy);
+    this.loadAnnotations(loadIndicator, function(annotationsPromise) {
+      return annotationsPromise
+        .done(function(annotations) {
+          toolbar.initTimefilter(annotations);
+        })
+        .then(relationsLayer.init);
     });
   };
   App.prototype = Object.create(BaseApp.prototype);
@@ -184,5 +176,4 @@ define([
   };
 
   return App;
-
 });

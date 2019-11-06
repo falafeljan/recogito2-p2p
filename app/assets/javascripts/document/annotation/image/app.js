@@ -1,10 +1,11 @@
 require.config({
-  baseUrl: "/assets/javascripts/",
+  baseUrl: '/assets/javascripts/',
   fileExclusionRegExp: /^lib$/,
   paths: {
     marked: '/webjars/marked/0.3.6/marked.min',
-    i18n: '../vendor/i18n'
-  }
+    i18n: '../vendor/i18n',
+    'from-me-to-you': '../vendor/me2u',
+  },
 });
 
 require([
@@ -22,7 +23,7 @@ require([
   'document/annotation/image/page/toolbar',
   'document/annotation/image/page/viewer',
   'document/annotation/image/selection/highlighter',
-  'document/annotation/image/selection/selectionHandler'
+  'document/annotation/image/selection/selectionHandler',
 ], function(
   Alert,
   PlaceUtils,
@@ -40,172 +41,168 @@ require([
   Highlighter,
   SelectionHandler
 ) {
+  var loadIndicator = new LoadIndicator();
 
-    var loadIndicator = new LoadIndicator();
+  /** The app is instantiated after the image manifest was loaded **/
+  var App = function(imageProperties) {
+    var self = this,
+      annotations = new AnnotationView(),
+      contentNode = document.getElementById('image-pane'),
+      toolbar = new Toolbar(),
+      viewer = new Viewer(imageProperties),
+      olMap = viewer.olMap,
+      highlighter = new Highlighter(olMap),
+      selector = new SelectionHandler(contentNode, olMap, highlighter),
+      editor = Config.writeAccess
+        ? new WriteEditor(contentNode, annotations.readOnly(), selector, {
+            autoscroll: false,
+          })
+        : new ReadEditor(contentNode, annotations.readOnly(), {
+            autoscroll: false,
+          }),
+      help = new Help();
 
-    /** The app is instantiated after the image manifest was loaded **/
-    var App = function(imageProperties) {
-
-      var self = this,
-
-          annotations = new AnnotationView(),
-
-          contentNode = document.getElementById('image-pane'),
-
-          toolbar = new Toolbar(),
-
-          viewer = new Viewer(imageProperties),
-
-          olMap = viewer.olMap,
-
-          highlighter = new Highlighter(olMap),
-
-          selector = new SelectionHandler(contentNode, olMap, highlighter),
-
-          editor = (Config.writeAccess) ?
-            new WriteEditor(contentNode, annotations.readOnly(), selector, { autoscroll: false }) :
-            new ReadEditor(contentNode, annotations.readOnly(), { autoscroll: false }),
-
-          help = new Help(),
-
-          onToggleFullscreen = function(isFullscreen) {
-            selector.updateSize();
-          },
-
-          onMapMove = function() {
-            if (editor.isOpen()) {
-              var selection = selector.getSelection();
-              if (selection) editor.setPosition(selection.bounds);
-            }
-          },
-
-          onToolChanged = function(toolKey) {
-            if (toolKey === 'move') {
-              jQuery(contentNode).removeClass('edit');
-              editor.close();
-              selector.setEnabled(false);
-            } else {
-              jQuery(contentNode).addClass('edit');
-              selector.setEnabled(toolKey);
-            }
-          },
-
-          onOverlayColorChanged = function(color) {
-            highlighter.setOverlayColor(color);
-          },
-
-          onToggleHelp = function() {
-            if (help.isVisible())
-              help.close();
-            else
-              help.open();
-          },
-
-          /**
-           * Helper that wraps a function with preceding selector.clearSelection.
-           * We need this due to the difference between text and image annotation.
-           * In image annotation annotation updates and deletes need an explicit
-           * call to selector.clear. In text annotation, this isn't needed, so the
-           * BaseApp doesn't do it.
-           */
-          withClearSelection = function(fn) {
-            return function(arg) {
-              selector.clearSelection();
-              fn(arg);
-            };
-          };
-
-      toolbar.on('toolChanged', onToolChanged);
-      toolbar.on('toggleHelp', onToggleHelp);
-      toolbar.on('overlayColorChanged', onOverlayColorChanged);
-      toolbar.on('toggleOverlays', highlighter.toggleOverlays);
-
-      BaseApp.apply(this, [ annotations, highlighter, selector ]);
-
-      viewer.on('fullscreen', onToggleFullscreen);
-
-      selector.on('changeShape', editor.updateAnchor.bind(editor));
-      selector.on('select', editor.openSelection.bind(editor));
-
-      editor.on('createAnnotation', withClearSelection(this.onCreateAnnotation.bind(this)));
-      editor.on('updateAnnotation', withClearSelection(this.onUpdateAnnotation.bind(this)));
-      editor.on('deleteAnnotation', withClearSelection(this.onDeleteAnnotation.bind(this)));
-
-      olMap.on('postrender', onMapMove);
-
-      PlaceUtils.initGazetteers().done(function() {
-        API.listAnnotationsInPart(Config.documentId, Config.partSequenceNo)
-           .done(self.onAnnotationsLoaded.bind(self)).then(loadIndicator.destroy)
-           .fail(self.onAnnotationsLoadError.bind(self)).then(loadIndicator.destroy);
-       });
+    var onToggleFullscreen = function(isFullscreen) {
+      selector.updateSize();
     };
-    App.prototype = Object.create(BaseApp.prototype);
 
-    /** On page load, fetch the manifest and instantiate the app **/
-    jQuery(document).ready(function() {
+    var onMapMove = function() {
+      if (editor.isOpen()) {
+        var selection = selector.getSelection();
+        if (selection) editor.setPosition(selection.bounds);
+      }
+    };
 
-      var imagePane = document.getElementById('image-pane'),
+    var onToolChanged = function(toolKey) {
+      if (toolKey === 'move') {
+        jQuery(contentNode).removeClass('edit');
+        editor.close();
+        selector.setEnabled(false);
+      } else {
+        jQuery(contentNode).addClass('edit');
+        selector.setEnabled(toolKey);
+      }
+    };
 
-          loadManifest = function() {
-            return jsRoutes.controllers.document.DocumentController
-              .getImageManifest(Config.documentId, Config.partSequenceNo)
-              .ajax({ crossDomain: true })
-              .then(function(response) {
-                if (Config.contentType === 'IMAGE_UPLOAD') {
-                  // jQuery handles the XML parsing
-                  var props = jQuery(response).find('IMAGE_PROPERTIES'),
-                      width = parseInt(props.attr('WIDTH')),
-                      height = parseInt(props.attr('HEIGHT'));
+    var onOverlayColorChanged = function(color) {
+      highlighter.setOverlayColor(color);
+    };
 
-                  return { width: width, height: height };
-                } else if (Config.contentType === 'IMAGE_IIIF') {
-                  return new IIIFImageInfo(response);
-                }
-              });
-          },
+    var onToggleHelp = function() {
+      if (help.isVisible()) help.close();
+      else help.open();
+    };
 
-          /**
-           * We need the image pane to extend from below the header bar to the bottom of the
-           * page. Since the header bar has a non-fixed height, this is non-trivial to do
-           * in CSS. (I guess there's a way to do it using flexbox. But then the page structure
-           * would likely have to be different for image and text views, which complicates
-           * matters. Easier to determine the offset via JS at page load.)
-           */
-          setImagePaneTop = function() {
-            var iconbar = jQuery('.header-iconbar'),
-                infobox = jQuery('.header-infobox'),
-                toolbar = jQuery('.header-toolbar'),
+    /**
+     * Helper that wraps a function with preceding selector.clearSelection.
+     * We need this due to the difference between text and image annotation.
+     * In image annotation annotation updates and deletes need an explicit
+     * call to selector.clear. In text annotation, this isn't needed, so the
+     * BaseApp doesn't do it.
+     */
+    var withClearSelection = function(fn) {
+      return function(arg) {
+        selector.clearSelection();
+        fn(arg);
+      };
+    };
 
-                offset = iconbar.outerHeight() + infobox.outerHeight() + toolbar.outerHeight();
+    toolbar.on('toolChanged', onToolChanged);
+    toolbar.on('toggleHelp', onToggleHelp);
+    toolbar.on('overlayColorChanged', onOverlayColorChanged);
+    toolbar.on('toggleOverlays', highlighter.toggleOverlays);
 
-            jQuery(imagePane).css('top', offset);
-          },
+    BaseApp.apply(this, [annotations, highlighter, selector]);
 
-          onLoadError = function(error) {
-            var title = 'Connection Error',
-                message = (Config.contentType === 'IMAGE_IIIF') ?
-                  'There was an error connecting to the remote IIIF endpoint.' :
-                  'An error occured.',
-                alert = new Alert(Alert.ERROR, title, message);
-          },
+    viewer.on('fullscreen', onToggleFullscreen);
 
-          init = function(imageProperties) {
-            new App(imageProperties);
-          };
+    selector.on('changeShape', editor.updateAnchor.bind(editor));
+    selector.on('select', editor.openSelection.bind(editor));
 
-      new Blazy({ // Init image lazy loading lib
-        offset: 0,
-        container: '.sidebar .menu',
-        validateDelay: 200,
-        saveViewportOffsetDelay: 200
-      });
+    editor.on(
+      'createAnnotation',
+      withClearSelection(this.onCreateAnnotation.bind(this))
+    );
+    editor.on(
+      'updateAnnotation',
+      withClearSelection(this.onUpdateAnnotation.bind(this))
+    );
+    editor.on(
+      'deleteAnnotation',
+      withClearSelection(this.onDeleteAnnotation.bind(this))
+    );
 
-      setImagePaneTop();
-      loadIndicator.init(imagePane);
+    olMap.on('postrender', onMapMove);
 
-      loadManifest()
-        .done(init)
-        .fail(onLoadError);
+    this.loadAnnotations(loadIndicator);
+  };
+  App.prototype = Object.create(BaseApp.prototype);
+
+  /** On page load, fetch the manifest and instantiate the app **/
+  jQuery(document).ready(function() {
+    var imagePane = document.getElementById('image-pane'),
+      loadManifest = function() {
+        return jsRoutes.controllers.document.DocumentController.getImageManifest(
+          Config.documentId,
+          Config.partSequenceNo
+        )
+          .ajax({ crossDomain: true })
+          .then(function(response) {
+            if (Config.contentType === 'IMAGE_UPLOAD') {
+              // jQuery handles the XML parsing
+              var props = jQuery(response).find('IMAGE_PROPERTIES'),
+                width = parseInt(props.attr('WIDTH')),
+                height = parseInt(props.attr('HEIGHT'));
+
+              return { width: width, height: height };
+            } else if (Config.contentType === 'IMAGE_IIIF') {
+              return new IIIFImageInfo(response);
+            }
+          });
+      },
+      /**
+       * We need the image pane to extend from below the header bar to the bottom of the
+       * page. Since the header bar has a non-fixed height, this is non-trivial to do
+       * in CSS. (I guess there's a way to do it using flexbox. But then the page structure
+       * would likely have to be different for image and text views, which complicates
+       * matters. Easier to determine the offset via JS at page load.)
+       */
+      setImagePaneTop = function() {
+        var iconbar = jQuery('.header-iconbar'),
+          infobox = jQuery('.header-infobox'),
+          toolbar = jQuery('.header-toolbar'),
+          offset =
+            iconbar.outerHeight() +
+            infobox.outerHeight() +
+            toolbar.outerHeight();
+
+        jQuery(imagePane).css('top', offset);
+      },
+      onLoadError = function(error) {
+        var title = 'Connection Error',
+          message =
+            Config.contentType === 'IMAGE_IIIF'
+              ? 'There was an error connecting to the remote IIIF endpoint.'
+              : 'An error occured.',
+          alert = new Alert(Alert.ERROR, title, message);
+      },
+      init = function(imageProperties) {
+        new App(imageProperties);
+      };
+
+    new Blazy({
+      // Init image lazy loading lib
+      offset: 0,
+      container: '.sidebar .menu',
+      validateDelay: 200,
+      saveViewportOffsetDelay: 200,
     });
 
+    setImagePaneTop();
+    loadIndicator.init(imagePane);
+
+    loadManifest()
+      .done(init)
+      .fail(onLoadError);
+  });
 });
