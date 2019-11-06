@@ -6,6 +6,7 @@ services:
       dockerfile: ./Dockerfile
     volumes:
       - recogitodata:/opt/recogito/uploads/
+      - $HOME/application.conf:/opt/recogito/conf/application.conf
     ports:
       - 9000:9000
     networks:
