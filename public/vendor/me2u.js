@@ -80,10 +80,6 @@ function (_EventEmitter) {
 
     _defineProperty(_assertThisInitialized(_this), "streams", new Map());
 
-    _defineProperty(_assertThisInitialized(_this), "_handleStreamEnd", function (streamId) {
-      _this.streams["delete"](streamId);
-    });
-
     if (typeof handleError === 'function') {
       _this.on('error', handleError);
     }
@@ -104,8 +100,8 @@ function (_EventEmitter) {
       assert(swarm, '`opts.swarm` needs to be supplied to AbstractSwarm');
       this.topic = crypto.createHash('sha256').update(topic).digest();
       this.swarm = swarm;
-      this.swarm.on('connection', function (socket) {
-        return _this2._handleConnection(socket);
+      this.swarm.on('connection', function (socket, info) {
+        return _this2._handleConnection(socket, info);
       });
       this.swarm.join(this.topic, joinOpts);
       this.emit('ready');
@@ -137,7 +133,12 @@ function (_EventEmitter) {
   }, {
     key: "_createStream",
     value: function _createStream() {
-      throw new Error('`_createStream` needs to be implemented');
+      assert.fail('`swarm._createStream` needs to be implemented');
+    }
+  }, {
+    key: "_handleStreamEnd",
+    value: function _handleStreamEnd(streamId) {
+      this.streams["delete"](streamId);
     }
   }, {
     key: "destroy",
@@ -220,7 +221,7 @@ module.exports = {
 var _require = require('url'),
     parseUrl = _require.parse;
 
-var pathPattern = /^(\/\w+)?\/annotations\/(\w+)\.jsonld$/;
+var pathPattern = /^(\/\w+)?\/annotations\/([0-9a-z-]+)\.jsonld$/;
 
 var parseId = function parseId(url) {
   var _parseUrl = parseUrl(url),
@@ -660,6 +661,9 @@ var _require2 = require('./stream'),
 var _require3 = require('../messages'),
     ResponseCode = _require3.ResponseCode;
 
+var _require4 = require('../annotation/meta'),
+    parseId = _require4.parseId;
+
 var debug = require('debug')('me2u:request-swarm');
 
 var requestTypeMapping = {
@@ -729,6 +733,109 @@ function (_AbstractSwarm) {
   }
 
   _createClass(AbstractRequestSwarm, [{
+    key: "getAnnotations",
+    value: function getAnnotations() {
+      return regeneratorRuntime.async(function getAnnotations$(_context) {
+        while (1) {
+          switch (_context.prev = _context.next) {
+            case 0:
+              _context.next = 2;
+              return regeneratorRuntime.awrap(this.createRequest('get', '/annotations.jsonld'));
+
+            case 2:
+              return _context.abrupt("return", _context.sent);
+
+            case 3:
+            case "end":
+              return _context.stop();
+          }
+        }
+      }, null, this);
+    }
+  }, {
+    key: "getAnnotation",
+    value: function getAnnotation(id) {
+      return regeneratorRuntime.async(function getAnnotation$(_context2) {
+        while (1) {
+          switch (_context2.prev = _context2.next) {
+            case 0:
+              _context2.next = 2;
+              return regeneratorRuntime.awrap(this.createRequest('get', "/annotations/".concat(id, ".jsonld")));
+
+            case 2:
+              return _context2.abrupt("return", _context2.sent);
+
+            case 3:
+            case "end":
+              return _context2.stop();
+          }
+        }
+      }, null, this);
+    }
+  }, {
+    key: "createAnnotation",
+    value: function createAnnotation(annotation) {
+      return regeneratorRuntime.async(function createAnnotation$(_context3) {
+        while (1) {
+          switch (_context3.prev = _context3.next) {
+            case 0:
+              _context3.next = 2;
+              return regeneratorRuntime.awrap(this.createRequest('post', '/annotations/', annotation));
+
+            case 2:
+              return _context3.abrupt("return", _context3.sent);
+
+            case 3:
+            case "end":
+              return _context3.stop();
+          }
+        }
+      }, null, this);
+    }
+  }, {
+    key: "updateAnnotation",
+    value: function updateAnnotation(annotation) {
+      var _parseId, annotationId;
+
+      return regeneratorRuntime.async(function updateAnnotation$(_context4) {
+        while (1) {
+          switch (_context4.prev = _context4.next) {
+            case 0:
+              _parseId = parseId(annotation.id), annotationId = _parseId.annotationId;
+              _context4.next = 3;
+              return regeneratorRuntime.awrap(this.createRequest('put', "/annotations/".concat(annotationId, ".jsonld"), annotation));
+
+            case 3:
+              return _context4.abrupt("return", _context4.sent);
+
+            case 4:
+            case "end":
+              return _context4.stop();
+          }
+        }
+      }, null, this);
+    }
+  }, {
+    key: "deleteAnnotation",
+    value: function deleteAnnotation(id) {
+      return regeneratorRuntime.async(function deleteAnnotation$(_context5) {
+        while (1) {
+          switch (_context5.prev = _context5.next) {
+            case 0:
+              _context5.next = 2;
+              return regeneratorRuntime.awrap(this.createRequest('delete', "/annotations/".concat(id, ".jsonld")));
+
+            case 2:
+              return _context5.abrupt("return", _context5.sent);
+
+            case 3:
+            case "end":
+              return _context5.stop();
+          }
+        }
+      }, null, this);
+    }
+  }, {
     key: "createRequest",
     value: function createRequest(method, path) {
       var _this3 = this;
@@ -749,14 +856,14 @@ function (_AbstractSwarm) {
         var handleProcessed = function handleProcessed(err, id, res) {
           if (id !== requestId) {
             return;
-          } else {
-            _this3.removeListener('processed-request', handleProcessed);
+          }
 
-            if (err) {
-              reject(err);
-            } else {
-              resolve(res);
-            }
+          _this3.removeListener('processed-request', handleProcessed);
+
+          if (err) {
+            reject(err);
+          } else {
+            resolve(res);
           }
         };
 
@@ -777,10 +884,10 @@ function (_AbstractSwarm) {
     }
   }, {
     key: "_handleConnection",
-    value: function _handleConnection(socket) {
+    value: function _handleConnection(socket, info) {
       var _this4 = this;
 
-      var stream = _get(_getPrototypeOf(AbstractRequestSwarm.prototype), "_handleConnection", this).call(this, socket);
+      var stream = _get(_getPrototypeOf(AbstractRequestSwarm.prototype), "_handleConnection", this).call(this, socket, info);
 
       var id = this.lastConnectionId++;
 
@@ -789,6 +896,15 @@ function (_AbstractSwarm) {
       this.connections.set(id, {
         socket: socket,
         createRequest: createRequest
+      });
+      socket.on('error', function (err) {
+        if (err.code === 'ECONNRESET' && info.peer) {
+          _this4.emit('error', new Error("Connection has been reset, peer probably won't accept new peers."));
+
+          return;
+        }
+
+        throw err;
       });
       socket.on('close', function () {
         _this4.connections["delete"](id);
@@ -805,19 +921,19 @@ function (_AbstractSwarm) {
     value: function _workQueue(connectionId) {
       var _iteratorNormalCompletion, _didIteratorError, _iteratorError, _iterator, _step, _step$value, requestId, _step$value$, method, path, data, _this$connections$get, createRequest, res;
 
-      return regeneratorRuntime.async(function _workQueue$(_context) {
+      return regeneratorRuntime.async(function _workQueue$(_context6) {
         while (1) {
-          switch (_context.prev = _context.next) {
+          switch (_context6.prev = _context6.next) {
             case 0:
               _iteratorNormalCompletion = true;
               _didIteratorError = false;
               _iteratorError = undefined;
-              _context.prev = 3;
+              _context6.prev = 3;
               _iterator = this.requestQueue.entries()[Symbol.iterator]();
 
             case 5:
               if (_iteratorNormalCompletion = (_step = _iterator.next()).done) {
-                _context.next = 24;
+                _context6.next = 24;
                 break;
               }
 
@@ -825,69 +941,69 @@ function (_AbstractSwarm) {
               debug("working request item ".concat(requestId));
               this.currentRequestId = requestId;
               _this$connections$get = this.connections.get(connectionId), createRequest = _this$connections$get.createRequest;
-              _context.prev = 10;
-              _context.next = 13;
+              _context6.prev = 10;
+              _context6.next = 13;
               return regeneratorRuntime.awrap(createRequest(method, path, data));
 
             case 13:
-              res = _context.sent;
+              res = _context6.sent;
               this.emit('processed-request', null, requestId, res);
-              _context.next = 20;
+              _context6.next = 20;
               break;
 
             case 17:
-              _context.prev = 17;
-              _context.t0 = _context["catch"](10);
-              this.emit('processed-request', _context.t0, requestId);
+              _context6.prev = 17;
+              _context6.t0 = _context6["catch"](10);
+              this.emit('processed-request', _context6.t0, requestId);
 
             case 20:
               this.requestQueue["delete"](requestId);
 
             case 21:
               _iteratorNormalCompletion = true;
-              _context.next = 5;
+              _context6.next = 5;
               break;
 
             case 24:
-              _context.next = 30;
+              _context6.next = 30;
               break;
 
             case 26:
-              _context.prev = 26;
-              _context.t1 = _context["catch"](3);
+              _context6.prev = 26;
+              _context6.t1 = _context6["catch"](3);
               _didIteratorError = true;
-              _iteratorError = _context.t1;
+              _iteratorError = _context6.t1;
 
             case 30:
-              _context.prev = 30;
-              _context.prev = 31;
+              _context6.prev = 30;
+              _context6.prev = 31;
 
               if (!_iteratorNormalCompletion && _iterator["return"] != null) {
                 _iterator["return"]();
               }
 
             case 33:
-              _context.prev = 33;
+              _context6.prev = 33;
 
               if (!_didIteratorError) {
-                _context.next = 36;
+                _context6.next = 36;
                 break;
               }
 
               throw _iteratorError;
 
             case 36:
-              return _context.finish(33);
+              return _context6.finish(33);
 
             case 37:
-              return _context.finish(30);
+              return _context6.finish(30);
 
             case 38:
               this.currentRequestId = null;
 
             case 39:
             case "end":
-              return _context.stop();
+              return _context6.stop();
           }
         }
       }, null, this, [[3, 26, 30, 38], [10, 17], [31,, 33, 37]]);
@@ -936,16 +1052,10 @@ module.exports = {
 };
 
 }).call(this,require("buffer").Buffer)
-},{"../abstract-swarm":3,"../messages":5,"./stream":8,"assert":23,"buffer":61,"debug":434}],7:[function(require,module,exports){
+},{"../abstract-swarm":3,"../annotation/meta":4,"../messages":5,"./stream":8,"assert":23,"buffer":61,"debug":434}],7:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
-function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
-
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(source, true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(source).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -972,9 +1082,6 @@ var _require = require('hyperswarm-ws'),
 
 var _require2 = require('./abstract-swarm'),
     AbstractRequestSwarm = _require2.AbstractRequestSwarm;
-
-var _require3 = require('../annotation/meta'),
-    parseId = _require3.parseId;
 
 var gatewayUrls = ['wss://hyperswarm-ws-gateway.kassel.works'];
 
@@ -1015,95 +1122,6 @@ function (_AbstractRequestSwarm) {
         }
       }, null, this);
     }
-  }, {
-    key: "getAnnotations",
-    value: function getAnnotations() {
-      return regeneratorRuntime.async(function getAnnotations$(_context2) {
-        while (1) {
-          switch (_context2.prev = _context2.next) {
-            case 0:
-              _context2.next = 2;
-              return regeneratorRuntime.awrap(this.createRequest('get', '/annotations.jsonld'));
-
-            case 2:
-              return _context2.abrupt("return", _context2.sent);
-
-            case 3:
-            case "end":
-              return _context2.stop();
-          }
-        }
-      }, null, this);
-    }
-  }, {
-    key: "getAnnotation",
-    value: function getAnnotation(id) {
-      return regeneratorRuntime.async(function getAnnotation$(_context3) {
-        while (1) {
-          switch (_context3.prev = _context3.next) {
-            case 0:
-              _context3.next = 2;
-              return regeneratorRuntime.awrap(this.createRequest('get', "/annotations/".concat(id, ".jsonld")));
-
-            case 2:
-              return _context3.abrupt("return", _context3.sent);
-
-            case 3:
-            case "end":
-              return _context3.stop();
-          }
-        }
-      }, null, this);
-    }
-  }, {
-    key: "createAnnotation",
-    value: function createAnnotation(annotation) {
-      var _ref, location;
-
-      return regeneratorRuntime.async(function createAnnotation$(_context4) {
-        while (1) {
-          switch (_context4.prev = _context4.next) {
-            case 0:
-              _context4.next = 2;
-              return regeneratorRuntime.awrap(this.createRequest('post', '/annotations/', annotation));
-
-            case 2:
-              _ref = _context4.sent;
-              location = _ref.location;
-              return _context4.abrupt("return", _objectSpread({}, annotation, {
-                id: "".concat(this.docUrl).concat(location)
-              }));
-
-            case 5:
-            case "end":
-              return _context4.stop();
-          }
-        }
-      }, null, this);
-    }
-  }, {
-    key: "updateAnnotation",
-    value: function updateAnnotation(annotation) {
-      var _parseId, annotationId;
-
-      return regeneratorRuntime.async(function updateAnnotation$(_context5) {
-        while (1) {
-          switch (_context5.prev = _context5.next) {
-            case 0:
-              _parseId = parseId(annotation.id), annotationId = _parseId.annotationId;
-              _context5.next = 3;
-              return regeneratorRuntime.awrap(this.createRequest('put', "/annotations/".concat(id, ".jsonld"), annotation));
-
-            case 3:
-              return _context5.abrupt("return", _context5.sent);
-
-            case 4:
-            case "end":
-              return _context5.stop();
-          }
-        }
-      }, null, this);
-    }
   }]);
 
   return RequestSwarm;
@@ -1113,7 +1131,7 @@ module.exports = {
   RequestSwarm: RequestSwarm
 };
 
-},{"../annotation/meta":4,"./abstract-swarm":6,"hyperswarm-ws":496}],8:[function(require,module,exports){
+},{"./abstract-swarm":6,"hyperswarm-ws":496}],8:[function(require,module,exports){
 (function (Buffer){
 "use strict";
 
