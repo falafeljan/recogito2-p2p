@@ -13,7 +13,7 @@ define([
     this.header = new Header();
 
     this.notebook = new FromMeToYou.RequestSwarm(
-      'hypermerge:/FHLQ1NF8HE8YdhdSEVjyUGeUcRk9SEshvac3M3jQRvZU',
+      'hypermerge:/CFTZKSVGnKVVZMf6z9Kp8QUswM6SZATtwwk63Z7L26QR',
       {
         handleError: function(err) {
           console.error('error', JSON.stringify(err, null, 2));
