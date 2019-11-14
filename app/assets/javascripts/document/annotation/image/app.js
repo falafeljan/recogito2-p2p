@@ -5,6 +5,8 @@ require.config({
     marked: '/webjars/marked/0.3.6/marked.min',
     i18n: '../vendor/i18n',
     'from-me-to-you': '../vendor/me2u',
+    'recogito-discovery': '../vendor/discovery',
+    'recogito-telemetry': '../vendor/telemetry',
   },
 });
 
@@ -134,7 +136,8 @@ require([
 
     olMap.on('postrender', onMapMove);
 
-    this.loadAnnotations(loadIndicator);
+    this.loadIndicator = loadIndicator;
+    // this.loadAnnotations(loadIndicator);
   };
   App.prototype = Object.create(BaseApp.prototype);
 

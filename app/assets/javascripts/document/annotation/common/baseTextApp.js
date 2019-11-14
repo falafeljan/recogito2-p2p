@@ -159,13 +159,14 @@ define([
 
     initPage();
 
-    this.loadAnnotations(loadIndicator, function(annotationsPromise) {
+    this.loadIndicator = loadIndicator;
+    this._postAnnotationsLoadedFixMe = function(annotationsPromise) {
       return annotationsPromise
         .then(function(annotations) {
           toolbar.initTimefilter(annotations);
         })
         .then(relationsLayer.init);
-    });
+    };
   };
   App.prototype = Object.create(BaseApp.prototype);
 
