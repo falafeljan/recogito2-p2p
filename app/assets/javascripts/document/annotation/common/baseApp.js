@@ -24,7 +24,9 @@ define([
   };
 
   window.RecogitoTelemetry = RecogitoTelemetry;
-  RecogitoTelemetry.initTelemetry('http://localhost:3000/event');
+  RecogitoTelemetry.initTelemetry(
+    'https://thesis-telemetry.kassel.works/event'
+  );
   console.log('User ID:', RecogitoTelemetry.getUserId());
 
   var BaseApp = function(annotations, highlighter, selector) {
