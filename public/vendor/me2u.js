@@ -23116,102 +23116,26 @@ exports.constants = {
 
 },{"browserify-cipher":48,"browserify-sign":55,"browserify-sign/algos":52,"create-ecdh":429,"create-hash":430,"create-hmac":432,"diffie-hellman":443,"pbkdf2":538,"public-encrypt":550,"randombytes":561,"randomfill":562}],435:[function(require,module,exports){
 (function (process){
+"use strict";
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
 /* eslint-env browser */
 
 /**
  * This is the web browser implementation of `debug()`.
  */
-
 exports.log = log;
 exports.formatArgs = formatArgs;
 exports.save = save;
 exports.load = load;
 exports.useColors = useColors;
 exports.storage = localstorage();
-
 /**
  * Colors.
  */
 
-exports.colors = [
-	'#0000CC',
-	'#0000FF',
-	'#0033CC',
-	'#0033FF',
-	'#0066CC',
-	'#0066FF',
-	'#0099CC',
-	'#0099FF',
-	'#00CC00',
-	'#00CC33',
-	'#00CC66',
-	'#00CC99',
-	'#00CCCC',
-	'#00CCFF',
-	'#3300CC',
-	'#3300FF',
-	'#3333CC',
-	'#3333FF',
-	'#3366CC',
-	'#3366FF',
-	'#3399CC',
-	'#3399FF',
-	'#33CC00',
-	'#33CC33',
-	'#33CC66',
-	'#33CC99',
-	'#33CCCC',
-	'#33CCFF',
-	'#6600CC',
-	'#6600FF',
-	'#6633CC',
-	'#6633FF',
-	'#66CC00',
-	'#66CC33',
-	'#9900CC',
-	'#9900FF',
-	'#9933CC',
-	'#9933FF',
-	'#99CC00',
-	'#99CC33',
-	'#CC0000',
-	'#CC0033',
-	'#CC0066',
-	'#CC0099',
-	'#CC00CC',
-	'#CC00FF',
-	'#CC3300',
-	'#CC3333',
-	'#CC3366',
-	'#CC3399',
-	'#CC33CC',
-	'#CC33FF',
-	'#CC6600',
-	'#CC6633',
-	'#CC9900',
-	'#CC9933',
-	'#CCCC00',
-	'#CCCC33',
-	'#FF0000',
-	'#FF0033',
-	'#FF0066',
-	'#FF0099',
-	'#FF00CC',
-	'#FF00FF',
-	'#FF3300',
-	'#FF3333',
-	'#FF3366',
-	'#FF3399',
-	'#FF33CC',
-	'#FF33FF',
-	'#FF6600',
-	'#FF6633',
-	'#FF9900',
-	'#FF9933',
-	'#FFCC00',
-	'#FFCC33'
-];
-
+exports.colors = ['#0000CC', '#0000FF', '#0033CC', '#0033FF', '#0066CC', '#0066FF', '#0099CC', '#0099FF', '#00CC00', '#00CC33', '#00CC66', '#00CC99', '#00CCCC', '#00CCFF', '#3300CC', '#3300FF', '#3333CC', '#3333FF', '#3366CC', '#3366FF', '#3399CC', '#3399FF', '#33CC00', '#33CC33', '#33CC66', '#33CC99', '#33CCCC', '#33CCFF', '#6600CC', '#6600FF', '#6633CC', '#6633FF', '#66CC00', '#66CC33', '#9900CC', '#9900FF', '#9933CC', '#9933FF', '#99CC00', '#99CC33', '#CC0000', '#CC0033', '#CC0066', '#CC0099', '#CC00CC', '#CC00FF', '#CC3300', '#CC3333', '#CC3366', '#CC3399', '#CC33CC', '#CC33FF', '#CC6600', '#CC6633', '#CC9900', '#CC9933', '#CCCC00', '#CCCC33', '#FF0000', '#FF0033', '#FF0066', '#FF0099', '#FF00CC', '#FF00FF', '#FF3300', '#FF3333', '#FF3366', '#FF3399', '#FF33CC', '#FF33FF', '#FF6600', '#FF6633', '#FF9900', '#FF9933', '#FFCC00', '#FFCC33'];
 /**
  * Currently only WebKit-based Web Inspectors, Firefox >= v31,
  * and the Firebug extension (any Firefox version) are known
@@ -23219,130 +23143,123 @@ exports.colors = [
  *
  * TODO: add a `localStorage` variable to explicitly enable/disable colors
  */
-
 // eslint-disable-next-line complexity
+
 function useColors() {
-	// NB: In an Electron preload script, document will be defined but not fully
-	// initialized. Since we know we're in Chrome, we'll just detect this case
-	// explicitly
-	if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
-		return true;
-	}
+  // NB: In an Electron preload script, document will be defined but not fully
+  // initialized. Since we know we're in Chrome, we'll just detect this case
+  // explicitly
+  if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+    return true;
+  } // Internet Explorer and Edge do not support colors.
 
-	// Internet Explorer and Edge do not support colors.
-	if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
-		return false;
-	}
 
-	// Is webkit? http://stackoverflow.com/a/16459606/376773
-	// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
-	return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
-		// Is firebug? http://stackoverflow.com/a/398120/376773
-		(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
-		// Is firefox >= v31?
-		// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
-		// Double check webkit in userAgent just in case we are in a worker
-		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+  if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+    return false;
+  } // Is webkit? http://stackoverflow.com/a/16459606/376773
+  // document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+
+
+  return typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // Is firebug? http://stackoverflow.com/a/398120/376773
+  typeof window !== 'undefined' && window.console && (window.console.firebug || window.console.exception && window.console.table) || // Is firefox >= v31?
+  // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+  typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31 || // Double check webkit in userAgent just in case we are in a worker
+  typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
 }
-
 /**
  * Colorize log arguments if enabled.
  *
  * @api public
  */
 
+
 function formatArgs(args) {
-	args[0] = (this.useColors ? '%c' : '') +
-		this.namespace +
-		(this.useColors ? ' %c' : ' ') +
-		args[0] +
-		(this.useColors ? '%c ' : ' ') +
-		'+' + module.exports.humanize(this.diff);
+  args[0] = (this.useColors ? '%c' : '') + this.namespace + (this.useColors ? ' %c' : ' ') + args[0] + (this.useColors ? '%c ' : ' ') + '+' + module.exports.humanize(this.diff);
 
-	if (!this.useColors) {
-		return;
-	}
+  if (!this.useColors) {
+    return;
+  }
 
-	const c = 'color: ' + this.color;
-	args.splice(1, 0, c, 'color: inherit');
+  var c = 'color: ' + this.color;
+  args.splice(1, 0, c, 'color: inherit'); // The final "%c" is somewhat tricky, because there could be other
+  // arguments passed either before or after the %c, so we need to
+  // figure out the correct index to insert the CSS into
 
-	// The final "%c" is somewhat tricky, because there could be other
-	// arguments passed either before or after the %c, so we need to
-	// figure out the correct index to insert the CSS into
-	let index = 0;
-	let lastC = 0;
-	args[0].replace(/%[a-zA-Z%]/g, match => {
-		if (match === '%%') {
-			return;
-		}
-		index++;
-		if (match === '%c') {
-			// We only are interested in the *last* %c
-			// (the user may have provided their own)
-			lastC = index;
-		}
-	});
+  var index = 0;
+  var lastC = 0;
+  args[0].replace(/%[a-zA-Z%]/g, function (match) {
+    if (match === '%%') {
+      return;
+    }
 
-	args.splice(lastC, 0, c);
+    index++;
+
+    if (match === '%c') {
+      // We only are interested in the *last* %c
+      // (the user may have provided their own)
+      lastC = index;
+    }
+  });
+  args.splice(lastC, 0, c);
 }
-
 /**
  * Invokes `console.log()` when available.
  * No-op when `console.log` is not a "function".
  *
  * @api public
  */
-function log(...args) {
-	// This hackery is required for IE8/9, where
-	// the `console.log` function doesn't have 'apply'
-	return typeof console === 'object' &&
-		console.log &&
-		console.log(...args);
-}
 
+
+function log() {
+  var _console;
+
+  // This hackery is required for IE8/9, where
+  // the `console.log` function doesn't have 'apply'
+  return (typeof console === "undefined" ? "undefined" : _typeof(console)) === 'object' && console.log && (_console = console).log.apply(_console, arguments);
+}
 /**
  * Save `namespaces`.
  *
  * @param {String} namespaces
  * @api private
  */
-function save(namespaces) {
-	try {
-		if (namespaces) {
-			exports.storage.setItem('debug', namespaces);
-		} else {
-			exports.storage.removeItem('debug');
-		}
-	} catch (error) {
-		// Swallow
-		// XXX (@Qix-) should we be logging these?
-	}
-}
 
+
+function save(namespaces) {
+  try {
+    if (namespaces) {
+      exports.storage.setItem('debug', namespaces);
+    } else {
+      exports.storage.removeItem('debug');
+    }
+  } catch (error) {// Swallow
+    // XXX (@Qix-) should we be logging these?
+  }
+}
 /**
  * Load `namespaces`.
  *
  * @return {String} returns the previously persisted debug modes
  * @api private
  */
+
+
 function load() {
-	let r;
-	try {
-		r = exports.storage.getItem('debug');
-	} catch (error) {
-		// Swallow
-		// XXX (@Qix-) should we be logging these?
-	}
+  var r;
 
-	// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
-	if (!r && typeof process !== 'undefined' && 'env' in process) {
-		r = process.env.DEBUG;
-	}
+  try {
+    r = exports.storage.getItem('debug');
+  } catch (error) {} // Swallow
+  // XXX (@Qix-) should we be logging these?
+  // If debug isn't set in LS, and we're in Electron, try to load $DEBUG
 
-	return r;
+
+  if (!r && typeof process !== 'undefined' && 'env' in process) {
+    r = process.env.DEBUG;
+  }
+
+  return r;
 }
-
 /**
  * Localstorage attempts to return the localstorage.
  *
@@ -23354,299 +23271,306 @@ function load() {
  * @api private
  */
 
+
 function localstorage() {
-	try {
-		// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
-		// The Browser also has localStorage in the global context.
-		return localStorage;
-	} catch (error) {
-		// Swallow
-		// XXX (@Qix-) should we be logging these?
-	}
+  try {
+    // TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+    // The Browser also has localStorage in the global context.
+    return localStorage;
+  } catch (error) {// Swallow
+    // XXX (@Qix-) should we be logging these?
+  }
 }
 
 module.exports = require('./common')(exports);
-
-const {formatters} = module.exports;
-
+var formatters = module.exports.formatters;
 /**
  * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
  */
 
 formatters.j = function (v) {
-	try {
-		return JSON.stringify(v);
-	} catch (error) {
-		return '[UnexpectedJSONParseError]: ' + error.message;
-	}
+  try {
+    return JSON.stringify(v);
+  } catch (error) {
+    return '[UnexpectedJSONParseError]: ' + error.message;
+  }
 };
 
 }).call(this,require('_process'))
 
 },{"./common":436,"_process":544}],436:[function(require,module,exports){
+"use strict";
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 /**
  * This is the common logic for both the Node.js and web browser
  * implementations of `debug()`.
  */
-
 function setup(env) {
-	createDebug.debug = createDebug;
-	createDebug.default = createDebug;
-	createDebug.coerce = coerce;
-	createDebug.disable = disable;
-	createDebug.enable = enable;
-	createDebug.enabled = enabled;
-	createDebug.humanize = require('ms');
+  createDebug.debug = createDebug;
+  createDebug["default"] = createDebug;
+  createDebug.coerce = coerce;
+  createDebug.disable = disable;
+  createDebug.enable = enable;
+  createDebug.enabled = enabled;
+  createDebug.humanize = require('ms');
+  Object.keys(env).forEach(function (key) {
+    createDebug[key] = env[key];
+  });
+  /**
+  * Active `debug` instances.
+  */
 
-	Object.keys(env).forEach(key => {
-		createDebug[key] = env[key];
-	});
+  createDebug.instances = [];
+  /**
+  * The currently active debug mode names, and names to skip.
+  */
 
-	/**
-	* Active `debug` instances.
-	*/
-	createDebug.instances = [];
+  createDebug.names = [];
+  createDebug.skips = [];
+  /**
+  * Map of special "%n" handling functions, for the debug "format" argument.
+  *
+  * Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+  */
 
-	/**
-	* The currently active debug mode names, and names to skip.
-	*/
+  createDebug.formatters = {};
+  /**
+  * Selects a color for a debug namespace
+  * @param {String} namespace The namespace string for the for the debug instance to be colored
+  * @return {Number|String} An ANSI color code for the given namespace
+  * @api private
+  */
 
-	createDebug.names = [];
-	createDebug.skips = [];
+  function selectColor(namespace) {
+    var hash = 0;
 
-	/**
-	* Map of special "%n" handling functions, for the debug "format" argument.
-	*
-	* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
-	*/
-	createDebug.formatters = {};
+    for (var i = 0; i < namespace.length; i++) {
+      hash = (hash << 5) - hash + namespace.charCodeAt(i);
+      hash |= 0; // Convert to 32bit integer
+    }
 
-	/**
-	* Selects a color for a debug namespace
-	* @param {String} namespace The namespace string for the for the debug instance to be colored
-	* @return {Number|String} An ANSI color code for the given namespace
-	* @api private
-	*/
-	function selectColor(namespace) {
-		let hash = 0;
+    return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+  }
 
-		for (let i = 0; i < namespace.length; i++) {
-			hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
-			hash |= 0; // Convert to 32bit integer
-		}
+  createDebug.selectColor = selectColor;
+  /**
+  * Create a debugger with the given `namespace`.
+  *
+  * @param {String} namespace
+  * @return {Function}
+  * @api public
+  */
 
-		return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
-	}
-	createDebug.selectColor = selectColor;
+  function createDebug(namespace) {
+    var prevTime;
 
-	/**
-	* Create a debugger with the given `namespace`.
-	*
-	* @param {String} namespace
-	* @return {Function}
-	* @api public
-	*/
-	function createDebug(namespace) {
-		let prevTime;
+    function debug() {
+      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
 
-		function debug(...args) {
-			// Disabled?
-			if (!debug.enabled) {
-				return;
-			}
+      // Disabled?
+      if (!debug.enabled) {
+        return;
+      }
 
-			const self = debug;
+      var self = debug; // Set `diff` timestamp
 
-			// Set `diff` timestamp
-			const curr = Number(new Date());
-			const ms = curr - (prevTime || curr);
-			self.diff = ms;
-			self.prev = prevTime;
-			self.curr = curr;
-			prevTime = curr;
+      var curr = Number(new Date());
+      var ms = curr - (prevTime || curr);
+      self.diff = ms;
+      self.prev = prevTime;
+      self.curr = curr;
+      prevTime = curr;
+      args[0] = createDebug.coerce(args[0]);
 
-			args[0] = createDebug.coerce(args[0]);
+      if (typeof args[0] !== 'string') {
+        // Anything else let's inspect with %O
+        args.unshift('%O');
+      } // Apply any `formatters` transformations
 
-			if (typeof args[0] !== 'string') {
-				// Anything else let's inspect with %O
-				args.unshift('%O');
-			}
 
-			// Apply any `formatters` transformations
-			let index = 0;
-			args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
-				// If we encounter an escaped % then don't increase the array index
-				if (match === '%%') {
-					return match;
-				}
-				index++;
-				const formatter = createDebug.formatters[format];
-				if (typeof formatter === 'function') {
-					const val = args[index];
-					match = formatter.call(self, val);
+      var index = 0;
+      args[0] = args[0].replace(/%([a-zA-Z%])/g, function (match, format) {
+        // If we encounter an escaped % then don't increase the array index
+        if (match === '%%') {
+          return match;
+        }
 
-					// Now we need to remove `args[index]` since it's inlined in the `format`
-					args.splice(index, 1);
-					index--;
-				}
-				return match;
-			});
+        index++;
+        var formatter = createDebug.formatters[format];
 
-			// Apply env-specific formatting (colors, etc.)
-			createDebug.formatArgs.call(self, args);
+        if (typeof formatter === 'function') {
+          var val = args[index];
+          match = formatter.call(self, val); // Now we need to remove `args[index]` since it's inlined in the `format`
 
-			const logFn = self.log || createDebug.log;
-			logFn.apply(self, args);
-		}
+          args.splice(index, 1);
+          index--;
+        }
 
-		debug.namespace = namespace;
-		debug.enabled = createDebug.enabled(namespace);
-		debug.useColors = createDebug.useColors();
-		debug.color = selectColor(namespace);
-		debug.destroy = destroy;
-		debug.extend = extend;
-		// Debug.formatArgs = formatArgs;
-		// debug.rawLog = rawLog;
+        return match;
+      }); // Apply env-specific formatting (colors, etc.)
 
-		// env-specific initialization logic for debug instances
-		if (typeof createDebug.init === 'function') {
-			createDebug.init(debug);
-		}
+      createDebug.formatArgs.call(self, args);
+      var logFn = self.log || createDebug.log;
+      logFn.apply(self, args);
+    }
 
-		createDebug.instances.push(debug);
+    debug.namespace = namespace;
+    debug.enabled = createDebug.enabled(namespace);
+    debug.useColors = createDebug.useColors();
+    debug.color = selectColor(namespace);
+    debug.destroy = destroy;
+    debug.extend = extend; // Debug.formatArgs = formatArgs;
+    // debug.rawLog = rawLog;
+    // env-specific initialization logic for debug instances
 
-		return debug;
-	}
+    if (typeof createDebug.init === 'function') {
+      createDebug.init(debug);
+    }
 
-	function destroy() {
-		const index = createDebug.instances.indexOf(this);
-		if (index !== -1) {
-			createDebug.instances.splice(index, 1);
-			return true;
-		}
-		return false;
-	}
+    createDebug.instances.push(debug);
+    return debug;
+  }
 
-	function extend(namespace, delimiter) {
-		const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
-		newDebug.log = this.log;
-		return newDebug;
-	}
+  function destroy() {
+    var index = createDebug.instances.indexOf(this);
 
-	/**
-	* Enables a debug mode by namespaces. This can include modes
-	* separated by a colon and wildcards.
-	*
-	* @param {String} namespaces
-	* @api public
-	*/
-	function enable(namespaces) {
-		createDebug.save(namespaces);
+    if (index !== -1) {
+      createDebug.instances.splice(index, 1);
+      return true;
+    }
 
-		createDebug.names = [];
-		createDebug.skips = [];
+    return false;
+  }
 
-		let i;
-		const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
-		const len = split.length;
+  function extend(namespace, delimiter) {
+    var newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+    newDebug.log = this.log;
+    return newDebug;
+  }
+  /**
+  * Enables a debug mode by namespaces. This can include modes
+  * separated by a colon and wildcards.
+  *
+  * @param {String} namespaces
+  * @api public
+  */
 
-		for (i = 0; i < len; i++) {
-			if (!split[i]) {
-				// ignore empty strings
-				continue;
-			}
 
-			namespaces = split[i].replace(/\*/g, '.*?');
+  function enable(namespaces) {
+    createDebug.save(namespaces);
+    createDebug.names = [];
+    createDebug.skips = [];
+    var i;
+    var split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+    var len = split.length;
 
-			if (namespaces[0] === '-') {
-				createDebug.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
-			} else {
-				createDebug.names.push(new RegExp('^' + namespaces + '$'));
-			}
-		}
+    for (i = 0; i < len; i++) {
+      if (!split[i]) {
+        // ignore empty strings
+        continue;
+      }
 
-		for (i = 0; i < createDebug.instances.length; i++) {
-			const instance = createDebug.instances[i];
-			instance.enabled = createDebug.enabled(instance.namespace);
-		}
-	}
+      namespaces = split[i].replace(/\*/g, '.*?');
 
-	/**
-	* Disable debug output.
-	*
-	* @return {String} namespaces
-	* @api public
-	*/
-	function disable() {
-		const namespaces = [
-			...createDebug.names.map(toNamespace),
-			...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
-		].join(',');
-		createDebug.enable('');
-		return namespaces;
-	}
+      if (namespaces[0] === '-') {
+        createDebug.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+      } else {
+        createDebug.names.push(new RegExp('^' + namespaces + '$'));
+      }
+    }
 
-	/**
-	* Returns true if the given mode name is enabled, false otherwise.
-	*
-	* @param {String} name
-	* @return {Boolean}
-	* @api public
-	*/
-	function enabled(name) {
-		if (name[name.length - 1] === '*') {
-			return true;
-		}
+    for (i = 0; i < createDebug.instances.length; i++) {
+      var instance = createDebug.instances[i];
+      instance.enabled = createDebug.enabled(instance.namespace);
+    }
+  }
+  /**
+  * Disable debug output.
+  *
+  * @return {String} namespaces
+  * @api public
+  */
 
-		let i;
-		let len;
 
-		for (i = 0, len = createDebug.skips.length; i < len; i++) {
-			if (createDebug.skips[i].test(name)) {
-				return false;
-			}
-		}
+  function disable() {
+    var namespaces = [].concat(_toConsumableArray(createDebug.names.map(toNamespace)), _toConsumableArray(createDebug.skips.map(toNamespace).map(function (namespace) {
+      return '-' + namespace;
+    }))).join(',');
+    createDebug.enable('');
+    return namespaces;
+  }
+  /**
+  * Returns true if the given mode name is enabled, false otherwise.
+  *
+  * @param {String} name
+  * @return {Boolean}
+  * @api public
+  */
 
-		for (i = 0, len = createDebug.names.length; i < len; i++) {
-			if (createDebug.names[i].test(name)) {
-				return true;
-			}
-		}
 
-		return false;
-	}
+  function enabled(name) {
+    if (name[name.length - 1] === '*') {
+      return true;
+    }
 
-	/**
-	* Convert regexp to namespace
-	*
-	* @param {RegExp} regxep
-	* @return {String} namespace
-	* @api private
-	*/
-	function toNamespace(regexp) {
-		return regexp.toString()
-			.substring(2, regexp.toString().length - 2)
-			.replace(/\.\*\?$/, '*');
-	}
+    var i;
+    var len;
 
-	/**
-	* Coerce `val`.
-	*
-	* @param {Mixed} val
-	* @return {Mixed}
-	* @api private
-	*/
-	function coerce(val) {
-		if (val instanceof Error) {
-			return val.stack || val.message;
-		}
-		return val;
-	}
+    for (i = 0, len = createDebug.skips.length; i < len; i++) {
+      if (createDebug.skips[i].test(name)) {
+        return false;
+      }
+    }
 
-	createDebug.enable(createDebug.load());
+    for (i = 0, len = createDebug.names.length; i < len; i++) {
+      if (createDebug.names[i].test(name)) {
+        return true;
+      }
+    }
 
-	return createDebug;
+    return false;
+  }
+  /**
+  * Convert regexp to namespace
+  *
+  * @param {RegExp} regxep
+  * @return {String} namespace
+  * @api private
+  */
+
+
+  function toNamespace(regexp) {
+    return regexp.toString().substring(2, regexp.toString().length - 2).replace(/\.\*\?$/, '*');
+  }
+  /**
+  * Coerce `val`.
+  *
+  * @param {Mixed} val
+  * @return {Mixed}
+  * @api private
+  */
+
+
+  function coerce(val) {
+    if (val instanceof Error) {
+      return val.stack || val.message;
+    }
+
+    return val;
+  }
+
+  createDebug.enable(createDebug.load());
+  return createDebug;
 }
 
 module.exports = setup;
@@ -33304,315 +33228,523 @@ HmacDRBG.prototype.generate = function generate(len, enc, add, addEnc) {
 
 },{"hash.js":480,"minimalistic-assert":528,"minimalistic-crypto-utils":529}],493:[function(require,module,exports){
 (function (process){
-const EventEmitter = require('events')
-const HyperswarmProxyStream = require('./')
+"use strict";
 
-const NOT_CONNECTED = 'Not connected to proxy'
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-module.exports = class HyperswarmProxyClient extends EventEmitter {
-  constructor (options = {}) {
-    super()
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-    const { connection, autoconnect = true, maxPeers = 24 } = options
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
-    this.maxPeers = maxPeers
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
-    this._handleStream = this._handleStream.bind(this)
-    this._handleClose = this._handleClose.bind(this)
-    this._handlePeer = this._handlePeer.bind(this)
-    this._reJoin = this._reJoin.bind(this)
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
 
-    this._protocol = null
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
-    this._topics = []
-    this._connectedPeers = new Set()
-    this._seenPeers = []
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
-    this._autoconnect = autoconnect
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
-    this.destroyed = false
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var EventEmitter = require('events');
+
+var HyperswarmProxyStream = require('./');
+
+var NOT_CONNECTED = 'Not connected to proxy';
+
+module.exports =
+/*#__PURE__*/
+function (_EventEmitter) {
+  _inherits(HyperswarmProxyClient, _EventEmitter);
+
+  function HyperswarmProxyClient() {
+    var _this;
+
+    var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+    _classCallCheck(this, HyperswarmProxyClient);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(HyperswarmProxyClient).call(this));
+    var connection = options.connection,
+        _options$autoconnect = options.autoconnect,
+        autoconnect = _options$autoconnect === void 0 ? true : _options$autoconnect,
+        _options$maxPeers = options.maxPeers,
+        maxPeers = _options$maxPeers === void 0 ? 24 : _options$maxPeers;
+    _this.maxPeers = maxPeers;
+    _this._handleStream = _this._handleStream.bind(_assertThisInitialized(_this));
+    _this._handleClose = _this._handleClose.bind(_assertThisInitialized(_this));
+    _this._handlePeer = _this._handlePeer.bind(_assertThisInitialized(_this));
+    _this._reJoin = _this._reJoin.bind(_assertThisInitialized(_this));
+    _this._protocol = null;
+    _this._topics = [];
+    _this._connectedPeers = new Set();
+    _this._seenPeers = [];
+    _this._autoconnect = autoconnect;
+    _this.destroyed = false;
 
     if (connection) {
-      this.reconnect(connection)
-    }
-  }
-
-  reconnect (connection) {
-    if (this._protocol) {
-      this._protocol.removeListener('close', this._handleClose)
-      this._protocol.end()
-      this._protocol = null
+      _this.reconnect(connection);
     }
 
-    this._protocol = new HyperswarmProxyStream(connection)
-
-    this._protocol.on('stream', this._handleStream)
-    this._protocol.on('on_peer', this._handlePeer)
-    this._protocol.once('close', this._handleClose)
-
-    // Once the other side is ready, re-join known topics
-    this._protocol.once('ready', this._reJoin)
-
-    this._protocol.ready()
+    return _this;
   }
 
-  _handleStream (stream, { topic, peer }) {
-    const details = {
-      type: 'proxy',
-      client: true,
-      peer: {
+  _createClass(HyperswarmProxyClient, [{
+    key: "reconnect",
+    value: function reconnect(connection) {
+      if (this._protocol) {
+        this._protocol.removeListener('close', this._handleClose);
+
+        this._protocol.end();
+
+        this._protocol = null;
+      }
+
+      this._protocol = new HyperswarmProxyStream(connection);
+
+      this._protocol.on('stream', this._handleStream);
+
+      this._protocol.on('on_peer', this._handlePeer);
+
+      this._protocol.once('close', this._handleClose); // Once the other side is ready, re-join known topics
+
+
+      this._protocol.once('ready', this._reJoin);
+
+      this._protocol.ready();
+    }
+  }, {
+    key: "_handleStream",
+    value: function _handleStream(stream, _ref) {
+      var _this2 = this;
+
+      var topic = _ref.topic,
+          peer = _ref.peer;
+      var details = {
+        type: 'proxy',
+        client: true,
+        peer: {
+          host: peer,
+          port: 0,
+          local: false,
+          topic: topic
+        }
+      };
+
+      this._connectedPeers.add(peer);
+
+      this.emit('connection', stream, details);
+      stream.once('close', function () {
+        if (_this2.destroyed) {
+          return;
+        }
+
+        _this2.emit('disconnection', stream, details);
+
+        _this2._connectedPeers["delete"](peer);
+      });
+    }
+  }, {
+    key: "_handleClose",
+    value: function _handleClose() {
+      this._protocol = null;
+      this.emit('disconnected');
+    }
+  }, {
+    key: "_handlePeer",
+    value: function _handlePeer(_ref2) {
+      var topic = _ref2.topic,
+          peer = _ref2.peer;
+      var peerData = {
         host: peer,
         port: 0,
         local: false,
-        topic
+        topic: topic
+      };
+      this.emit('peer', peerData);
+
+      var hasConnected = this._connectedPeers.has(peer);
+
+      var hasMaxPeers = this._connectedPeers.size >= this.maxPeers;
+      var shouldConnect = this._autoconnect && !hasConnected && !hasMaxPeers;
+
+      if (shouldConnect) {
+        this.connect(peerData);
+      } else if (!this._seenPeers.find(function (data) {
+        return data.peer === peer;
+      })) {
+        // TODO: Do something with this, like connect to them after disconnection
+        this._seenPeers.push(peerData);
       }
     }
+  }, {
+    key: "_reJoin",
+    value: function _reJoin() {
+      var _iteratorNormalCompletion = true;
+      var _didIteratorError = false;
+      var _iteratorError = undefined;
 
-    this._connectedPeers.add(peer)
-
-    this.emit('connection', stream, details)
-
-    stream.once('close', () => {
-      if (this.destroyed) {
-        return
+      try {
+        for (var _iterator = this._topics[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+          var topic = _step.value;
+          this.join(topic);
+        }
+      } catch (err) {
+        _didIteratorError = true;
+        _iteratorError = err;
+      } finally {
+        try {
+          if (!_iteratorNormalCompletion && _iterator["return"] != null) {
+            _iterator["return"]();
+          }
+        } finally {
+          if (_didIteratorError) {
+            throw _iteratorError;
+          }
+        }
       }
-      this.emit('disconnection', stream, details)
-      this._connectedPeers.delete(peer)
-    })
-  }
-
-  _handleClose () {
-    this._protocol = null
-    this.emit('disconnected')
-  }
-
-  _handlePeer ({ topic, peer }) {
-    const peerData = {
-      host: peer,
-      port: 0,
-      local: false,
-      topic
     }
+  }, {
+    key: "join",
+    value: function join(topic) {
+      if (!this._protocol) throw new Error(NOT_CONNECTED);
 
-    this.emit('peer', peerData)
+      this._protocol.join(topic);
 
-    const hasConnected = this._connectedPeers.has(peer)
-    const hasMaxPeers = this._connectedPeers.size >= this.maxPeers
-    const shouldConnect = this._autoconnect && !hasConnected && !hasMaxPeers
+      var hasSeen = this._topics.some(function (other) {
+        return other.equals(topic);
+      });
 
-    if (shouldConnect) {
-      this.connect(peerData)
-    } else if (!this._seenPeers.find(data => data.peer === peer)) {
-      // TODO: Do something with this, like connect to them after disconnection
-      this._seenPeers.push(peerData)
+      if (!hasSeen) {
+        this._topics.push(topic);
+      }
     }
-  }
+  }, {
+    key: "leave",
+    value: function leave(topic) {
+      if (!this._protocol) throw new Error(NOT_CONNECTED);
 
-  _reJoin () {
-    for (const topic of this._topics) {
-      this.join(topic)
+      this._protocol.leave(topic);
+
+      this._topics = this._topics.filter(function (other) {
+        return !other.equals(topic);
+      });
+      this._seenPeers = this._seenPeers.filter(function (_ref3) {
+        var other = _ref3.topic;
+        return !other.equals(topic);
+      });
     }
-  }
+  }, {
+    key: "connect",
+    value: function connect(peer) {
+      var _this3 = this;
 
-  get connections () {
-    if (!this._protocol) return new Set()
-    return this._protocol.connections
-  }
+      var cb = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : noop;
+      if (!this._protocol) return setTimeout(function () {
+        return cb(new Error(NOT_CONNECTED));
+      }, 0);
+      var id = peer.host;
 
-  join (topic) {
-    if (!this._protocol) throw new Error(NOT_CONNECTED)
-    this._protocol.join(topic)
-    const hasSeen = this._topics.some((other) => other.equals(topic))
-    if (!hasSeen) {
-      this._topics.push(topic)
+      var listenStreams = function listenStreams(stream, details) {
+        var foundId = details.peer.host;
+        if (foundId !== id) return;
+        cb(null, stream, details);
+
+        _this3.removeListener('connection', listenStreams);
+      };
+
+      if (cb) {
+        this.on('connection', listenStreams);
+      }
+
+      this._protocol.connect(id);
     }
-  }
+  }, {
+    key: "destroy",
+    value: function destroy(cb) {
+      if (this._protocol) {
+        this._protocol.removeListener('close', this._handleClose);
 
-  leave (topic) {
-    if (!this._protocol) throw new Error(NOT_CONNECTED)
-    this._protocol.leave(topic)
-    this._topics = this._topics.filter((other) => !other.equals(topic))
-    this._seenPeers = this._seenPeers.filter(({ topic: other }) => !other.equals(topic))
-  }
+        this._protocol.end();
+      }
 
-  connect (peer, cb = noop) {
-    if (!this._protocol) return setTimeout(() => cb(new Error(NOT_CONNECTED)), 0)
-    const id = peer.host
-
-    const listenStreams = (stream, details) => {
-      const foundId = details.peer.host
-      if (foundId !== id) return
-      cb(null, stream, details)
-      this.removeListener('connection', listenStreams)
+      this._topics = null;
+      this._connectedPeers = null;
+      this._seenPeers = null;
+      this.destroyed = true;
+      if (cb) process.nextTick(cb);
     }
-
-    if (cb) {
-      this.on('connection', listenStreams)
+  }, {
+    key: "connections",
+    get: function get() {
+      if (!this._protocol) return new Set();
+      return this._protocol.connections;
     }
+  }]);
 
-    this._protocol.connect(id)
-  }
+  return HyperswarmProxyClient;
+}(EventEmitter);
 
-  destroy (cb) {
-    if (this._protocol) {
-      this._protocol.removeListener('close', this._handleClose)
-      this._protocol.end()
-    }
-
-    this._topics = null
-    this._connectedPeers = null
-    this._seenPeers = null
-    this.destroyed = true
-
-    if (cb) process.nextTick(cb)
-  }
-}
-
-function noop () {}
+function noop() {}
 
 }).call(this,require('_process'))
 
 },{"./":494,"_process":544,"events":477}],494:[function(require,module,exports){
 (function (Buffer){
-const Duplex = require('stream').Duplex
-const lps = require('length-prefixed-stream')
-const { SwarmEvent, EventType } = require('./messages')
-const ProxyStream = require('./proxystream')
+"use strict";
 
-module.exports = class HyperswarmProxyStream extends Duplex {
-  constructor (stream) {
-    super()
-    this.connections = new Set()
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-    // There's going to be a lot of listeners
-    this.setMaxListeners(256)
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
-    stream
-      .pipe(lps.decode())
-      .pipe(this)
-      .pipe(lps.encode())
-      .pipe(stream)
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(source, true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(source).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
-    this.on('on_stream_open', this._handleStreamOpen.bind(this))
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-    this.once('close', () => this._closeAllStreams())
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var Duplex = require('stream').Duplex;
+
+var lps = require('length-prefixed-stream');
+
+var _require = require('./messages'),
+    SwarmEvent = _require.SwarmEvent,
+    EventType = _require.EventType;
+
+var ProxyStream = require('./proxystream');
+
+module.exports =
+/*#__PURE__*/
+function (_Duplex) {
+  _inherits(HyperswarmProxyStream, _Duplex);
+
+  function HyperswarmProxyStream(stream) {
+    var _this;
+
+    _classCallCheck(this, HyperswarmProxyStream);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(HyperswarmProxyStream).call(this));
+    _this.connections = new Set(); // There's going to be a lot of listeners
+
+    _this.setMaxListeners(256);
+
+    stream.pipe(lps.decode()).pipe(_assertThisInitialized(_this)).pipe(lps.encode()).pipe(stream);
+
+    _this.on('on_stream_open', _this._handleStreamOpen.bind(_assertThisInitialized(_this)));
+
+    _this.once('close', function () {
+      return _this._closeAllStreams();
+    });
+
+    return _this;
   }
 
-  ready () {
-    this.sendMessage('READY')
-  }
-
-  join (topic) {
-    this.sendMessage('JOIN', { topic })
-  }
-
-  leave (topic) {
-    this.sendMessage('LEAVE', { topic })
-  }
-
-  onPeer (topic, peer) {
-    this.sendMessage('ON_PEER', { topic, peer })
-  }
-
-  connect (peer) {
-    this.sendMessage('CONNECT', { peer })
-  }
-
-  onStreamOpen (topic, peer, stream) {
-    this.sendMessage('ON_STREAM_OPEN', { topic, peer, stream })
-  }
-
-  onStreamData (stream, data) {
-    if (typeof data === 'string') {
-      data = Buffer.from(data, 'utf8')
+  _createClass(HyperswarmProxyStream, [{
+    key: "ready",
+    value: function ready() {
+      this.sendMessage('READY');
     }
-    this.sendMessage('ON_STREAM_DATA', { stream, data })
-  }
-
-  onStreamClose (stream) {
-    this.sendMessage('ON_STREAM_CLOSE', { stream })
-  }
-
-  onStreamError (stream, message, peer) {
-    const data = Buffer.from(message, 'utf8')
-    this.sendMessage('ON_STREAM_ERROR', { stream, data })
-  }
-
-  openStream (topic, peer, stream) {
-    const proxy = new ProxyStream(this, stream)
-
-    this._addStream(proxy)
-
-    this.onStreamOpen(topic, peer, stream)
-
-    return proxy
-  }
-
-  _closeAllStreams () {
-    for (const connection of this.connections) {
-      connection.end()
+  }, {
+    key: "join",
+    value: function join(topic) {
+      this.sendMessage('JOIN', {
+        topic: topic
+      });
     }
-  }
+  }, {
+    key: "leave",
+    value: function leave(topic) {
+      this.sendMessage('LEAVE', {
+        topic: topic
+      });
+    }
+  }, {
+    key: "onPeer",
+    value: function onPeer(topic, peer) {
+      this.sendMessage('ON_PEER', {
+        topic: topic,
+        peer: peer
+      });
+    }
+  }, {
+    key: "connect",
+    value: function connect(peer) {
+      this.sendMessage('CONNECT', {
+        peer: peer
+      });
+    }
+  }, {
+    key: "onStreamOpen",
+    value: function onStreamOpen(topic, peer, stream) {
+      this.sendMessage('ON_STREAM_OPEN', {
+        topic: topic,
+        peer: peer,
+        stream: stream
+      });
+    }
+  }, {
+    key: "onStreamData",
+    value: function onStreamData(stream, data) {
+      if (typeof data === 'string') {
+        data = Buffer.from(data, 'utf8');
+      }
 
-  _addStream (stream) {
-    this.connections.add(stream)
-    stream.once('close', () => {
-      this.connections.delete(stream)
-    })
-  }
+      this.sendMessage('ON_STREAM_DATA', {
+        stream: stream,
+        data: data
+      });
+    }
+  }, {
+    key: "onStreamClose",
+    value: function onStreamClose(stream) {
+      this.sendMessage('ON_STREAM_CLOSE', {
+        stream: stream
+      });
+    }
+  }, {
+    key: "onStreamError",
+    value: function onStreamError(stream, message, peer) {
+      var data = Buffer.from(message, 'utf8');
+      this.sendMessage('ON_STREAM_ERROR', {
+        stream: stream,
+        data: data
+      });
+    }
+  }, {
+    key: "openStream",
+    value: function openStream(topic, peer, stream) {
+      var proxy = new ProxyStream(this, stream);
 
-  _handleStreamOpen ({ topic, peer, stream }) {
-    const proxy = new ProxyStream(this, stream)
+      this._addStream(proxy);
 
-    this._addStream(proxy)
+      this.onStreamOpen(topic, peer, stream);
+      return proxy;
+    }
+  }, {
+    key: "_closeAllStreams",
+    value: function _closeAllStreams() {
+      var _iteratorNormalCompletion = true;
+      var _didIteratorError = false;
+      var _iteratorError = undefined;
 
-    this.emit('stream', proxy, { topic, peer })
-  }
-
-  sendMessage (type, data = {}) {
-    this.push(SwarmEvent.encode({
-      type: EventType[type],
-      ...data
-    }))
-  }
-
-  _write (chunk, encoding, callback) {
-    try {
-      const decoded = SwarmEvent.decode(chunk)
-
-      const { type } = decoded
-
-      for (const name of Object.keys(EventType)) {
-        if (EventType[name] === type) {
-          this.emit(name.toLowerCase(), decoded)
+      try {
+        for (var _iterator = this.connections[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+          var connection = _step.value;
+          connection.end();
+        }
+      } catch (err) {
+        _didIteratorError = true;
+        _iteratorError = err;
+      } finally {
+        try {
+          if (!_iteratorNormalCompletion && _iterator["return"] != null) {
+            _iterator["return"]();
+          }
+        } finally {
+          if (_didIteratorError) {
+            throw _iteratorError;
+          }
         }
       }
-      callback()
-    } catch (e) {
-      callback(e)
     }
-  }
+  }, {
+    key: "_addStream",
+    value: function _addStream(stream) {
+      var _this2 = this;
 
-  // NOOP
-  _read () {}
-}
+      this.connections.add(stream);
+      stream.once('close', function () {
+        _this2.connections["delete"](stream);
+      });
+    }
+  }, {
+    key: "_handleStreamOpen",
+    value: function _handleStreamOpen(_ref) {
+      var topic = _ref.topic,
+          peer = _ref.peer,
+          stream = _ref.stream;
+      var proxy = new ProxyStream(this, stream);
+
+      this._addStream(proxy);
+
+      this.emit('stream', proxy, {
+        topic: topic,
+        peer: peer
+      });
+    }
+  }, {
+    key: "sendMessage",
+    value: function sendMessage(type) {
+      var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+      this.push(SwarmEvent.encode(_objectSpread({
+        type: EventType[type]
+      }, data)));
+    }
+  }, {
+    key: "_write",
+    value: function _write(chunk, encoding, callback) {
+      try {
+        var decoded = SwarmEvent.decode(chunk);
+        var type = decoded.type;
+
+        for (var _i = 0, _Object$keys = Object.keys(EventType); _i < _Object$keys.length; _i++) {
+          var name = _Object$keys[_i];
+
+          if (EventType[name] === type) {
+            this.emit(name.toLowerCase(), decoded);
+          }
+        }
+
+        callback();
+      } catch (e) {
+        callback(e);
+      }
+    } // NOOP
+
+  }, {
+    key: "_read",
+    value: function _read() {}
+  }]);
+
+  return HyperswarmProxyStream;
+}(Duplex);
 
 }).call(this,require("buffer").Buffer)
 
 },{"./messages":495,"./proxystream":496,"buffer":61,"length-prefixed-stream":505,"stream":579}],495:[function(require,module,exports){
 (function (Buffer){
+"use strict";
+
 // This file is auto generated by the protocol-buffers compiler
 
 /* eslint-disable quotes */
+
 /* eslint-disable indent */
+
 /* eslint-disable no-redeclare */
+
 /* eslint-disable camelcase */
-
 // Remember to `npm install --save protocol-buffers-encodings`
-var encodings = require('protocol-buffers-encodings')
-var varint = encodings.varint
-var skip = encodings.skip
+var encodings = require('protocol-buffers-encodings');
 
+var varint = encodings.varint;
+var skip = encodings.skip;
 exports.EventType = {
   READY: 1,
   JOIN: 2,
@@ -33623,342 +33755,562 @@ exports.EventType = {
   ON_STREAM_ERROR: 7,
   ON_PEER: 8,
   CONNECT: 9
-}
-
+};
 var SwarmEvent = exports.SwarmEvent = {
   buffer: true,
   encodingLength: null,
   encode: null,
   decode: null
-}
+};
+defineSwarmEvent();
 
-defineSwarmEvent()
+function defineSwarmEvent() {
+  var enc = [encodings["enum"], encodings.bytes, encodings.string, encodings.int32];
+  SwarmEvent.encodingLength = encodingLength;
+  SwarmEvent.encode = encode;
+  SwarmEvent.decode = decode;
 
-function defineSwarmEvent () {
-  var enc = [
-    encodings.enum,
-    encodings.bytes,
-    encodings.string,
-    encodings.int32
-  ]
+  function encodingLength(obj) {
+    var length = 0;
+    if (!defined(obj.type)) throw new Error("type is required");
+    var len = enc[0].encodingLength(obj.type);
+    length += 1 + len;
 
-  SwarmEvent.encodingLength = encodingLength
-  SwarmEvent.encode = encode
-  SwarmEvent.decode = decode
-
-  function encodingLength (obj) {
-    var length = 0
-    if (!defined(obj.type)) throw new Error("type is required")
-    var len = enc[0].encodingLength(obj.type)
-    length += 1 + len
     if (defined(obj.topic)) {
-      var len = enc[1].encodingLength(obj.topic)
-      length += 1 + len
+      var len = enc[1].encodingLength(obj.topic);
+      length += 1 + len;
     }
+
     if (defined(obj.data)) {
-      var len = enc[1].encodingLength(obj.data)
-      length += 1 + len
+      var len = enc[1].encodingLength(obj.data);
+      length += 1 + len;
     }
+
     if (defined(obj.peer)) {
-      var len = enc[2].encodingLength(obj.peer)
-      length += 1 + len
+      var len = enc[2].encodingLength(obj.peer);
+      length += 1 + len;
     }
+
     if (defined(obj.stream)) {
-      var len = enc[3].encodingLength(obj.stream)
-      length += 1 + len
+      var len = enc[3].encodingLength(obj.stream);
+      length += 1 + len;
     }
-    return length
+
+    return length;
   }
 
-  function encode (obj, buf, offset) {
-    if (!offset) offset = 0
-    if (!buf) buf = Buffer.allocUnsafe(encodingLength(obj))
-    var oldOffset = offset
-    if (!defined(obj.type)) throw new Error("type is required")
-    buf[offset++] = 8
-    enc[0].encode(obj.type, buf, offset)
-    offset += enc[0].encode.bytes
+  function encode(obj, buf, offset) {
+    if (!offset) offset = 0;
+    if (!buf) buf = Buffer.allocUnsafe(encodingLength(obj));
+    var oldOffset = offset;
+    if (!defined(obj.type)) throw new Error("type is required");
+    buf[offset++] = 8;
+    enc[0].encode(obj.type, buf, offset);
+    offset += enc[0].encode.bytes;
+
     if (defined(obj.topic)) {
-      buf[offset++] = 18
-      enc[1].encode(obj.topic, buf, offset)
-      offset += enc[1].encode.bytes
+      buf[offset++] = 18;
+      enc[1].encode(obj.topic, buf, offset);
+      offset += enc[1].encode.bytes;
     }
+
     if (defined(obj.data)) {
-      buf[offset++] = 26
-      enc[1].encode(obj.data, buf, offset)
-      offset += enc[1].encode.bytes
+      buf[offset++] = 26;
+      enc[1].encode(obj.data, buf, offset);
+      offset += enc[1].encode.bytes;
     }
+
     if (defined(obj.peer)) {
-      buf[offset++] = 34
-      enc[2].encode(obj.peer, buf, offset)
-      offset += enc[2].encode.bytes
+      buf[offset++] = 34;
+      enc[2].encode(obj.peer, buf, offset);
+      offset += enc[2].encode.bytes;
     }
+
     if (defined(obj.stream)) {
-      buf[offset++] = 40
-      enc[3].encode(obj.stream, buf, offset)
-      offset += enc[3].encode.bytes
+      buf[offset++] = 40;
+      enc[3].encode(obj.stream, buf, offset);
+      offset += enc[3].encode.bytes;
     }
-    encode.bytes = offset - oldOffset
-    return buf
+
+    encode.bytes = offset - oldOffset;
+    return buf;
   }
 
-  function decode (buf, offset, end) {
-    if (!offset) offset = 0
-    if (!end) end = buf.length
-    if (!(end <= buf.length && offset <= buf.length)) throw new Error("Decoded message is not valid")
-    var oldOffset = offset
+  function decode(buf, offset, end) {
+    if (!offset) offset = 0;
+    if (!end) end = buf.length;
+    if (!(end <= buf.length && offset <= buf.length)) throw new Error("Decoded message is not valid");
+    var oldOffset = offset;
     var obj = {
       type: 1,
       topic: null,
       data: null,
       peer: "",
       stream: 0
-    }
-    var found0 = false
+    };
+    var found0 = false;
+
     while (true) {
       if (end <= offset) {
-        if (!found0) throw new Error("Decoded message is not valid")
-        decode.bytes = offset - oldOffset
-        return obj
+        if (!found0) throw new Error("Decoded message is not valid");
+        decode.bytes = offset - oldOffset;
+        return obj;
       }
-      var prefix = varint.decode(buf, offset)
-      offset += varint.decode.bytes
-      var tag = prefix >> 3
+
+      var prefix = varint.decode(buf, offset);
+      offset += varint.decode.bytes;
+      var tag = prefix >> 3;
+
       switch (tag) {
         case 1:
-        obj.type = enc[0].decode(buf, offset)
-        offset += enc[0].decode.bytes
-        found0 = true
-        break
+          obj.type = enc[0].decode(buf, offset);
+          offset += enc[0].decode.bytes;
+          found0 = true;
+          break;
+
         case 2:
-        obj.topic = enc[1].decode(buf, offset)
-        offset += enc[1].decode.bytes
-        break
+          obj.topic = enc[1].decode(buf, offset);
+          offset += enc[1].decode.bytes;
+          break;
+
         case 3:
-        obj.data = enc[1].decode(buf, offset)
-        offset += enc[1].decode.bytes
-        break
+          obj.data = enc[1].decode(buf, offset);
+          offset += enc[1].decode.bytes;
+          break;
+
         case 4:
-        obj.peer = enc[2].decode(buf, offset)
-        offset += enc[2].decode.bytes
-        break
+          obj.peer = enc[2].decode(buf, offset);
+          offset += enc[2].decode.bytes;
+          break;
+
         case 5:
-        obj.stream = enc[3].decode(buf, offset)
-        offset += enc[3].decode.bytes
-        break
+          obj.stream = enc[3].decode(buf, offset);
+          offset += enc[3].decode.bytes;
+          break;
+
         default:
-        offset = skip(prefix & 7, buf, offset)
+          offset = skip(prefix & 7, buf, offset);
       }
     }
   }
 }
 
-function defined (val) {
-  return val !== null && val !== undefined && (typeof val !== 'number' || !isNaN(val))
+function defined(val) {
+  return val !== null && val !== undefined && (typeof val !== 'number' || !isNaN(val));
 }
 
 }).call(this,require("buffer").Buffer)
 
 },{"buffer":61,"protocol-buffers-encodings":545}],496:[function(require,module,exports){
-var Duplex = require('stream').Duplex
+"use strict";
 
-module.exports = class ProxyStream extends Duplex {
-  constructor (protocol, id) {
-    super()
-    this._secretId = Math.random()
-    this._id = id
-    this._protocol = protocol
-    this._isClosed = false
-    this._handle_data = this._handleData.bind(this)
-    this._handle_close = this._handleClose.bind(this)
-    this._handle_error = this._handleError.bind(this)
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-    this._protocol.on('on_stream_data', this._handle_data)
-    this._protocol.on('on_stream_close', this._handle_close)
-    this._protocol.on('on_stream_error', this._handle_error)
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var Duplex = require('stream').Duplex;
+
+module.exports =
+/*#__PURE__*/
+function (_Duplex) {
+  _inherits(ProxyStream, _Duplex);
+
+  function ProxyStream(protocol, id) {
+    var _this;
+
+    _classCallCheck(this, ProxyStream);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(ProxyStream).call(this));
+    _this._secretId = Math.random();
+    _this._id = id;
+    _this._protocol = protocol;
+    _this._isClosed = false;
+    _this._handle_data = _this._handleData.bind(_assertThisInitialized(_this));
+    _this._handle_close = _this._handleClose.bind(_assertThisInitialized(_this));
+    _this._handle_error = _this._handleError.bind(_assertThisInitialized(_this));
+
+    _this._protocol.on('on_stream_data', _this._handle_data);
+
+    _this._protocol.on('on_stream_close', _this._handle_close);
+
+    _this._protocol.on('on_stream_error', _this._handle_error);
+
+    return _this;
   }
 
-  _handleData ({ stream, data }) {
-    // See if the event was for this stream
-    if (this._isId(stream)) {
-      this.push(data)
+  _createClass(ProxyStream, [{
+    key: "_handleData",
+    value: function _handleData(_ref) {
+      var stream = _ref.stream,
+          data = _ref.data;
+
+      // See if the event was for this stream
+      if (this._isId(stream)) {
+        this.push(data);
+      }
     }
-  }
+  }, {
+    key: "_handleClose",
+    value: function _handleClose(_ref2) {
+      var stream = _ref2.stream;
 
-  _handleClose ({ stream }) {
-    if (this._isId(stream)) {
-      this.end()
-      this._cleanup()
+      if (this._isId(stream)) {
+        this.end();
+
+        this._cleanup();
+      }
     }
-  }
+  }, {
+    key: "_handleError",
+    value: function _handleError(_ref3) {
+      var stream = _ref3.stream,
+          data = _ref3.data;
 
-  _handleError ({ stream, data }) {
-    if (this._isId(stream)) {
-      const message = data.toString('utf8')
-      this.emit('error', new Error(message))
-      this.end()
-      this._cleanup()
+      if (this._isId(stream)) {
+        var message = data.toString('utf8');
+        this.emit('error', new Error(message));
+        this.end();
+
+        this._cleanup();
+      }
     }
-  }
+  }, {
+    key: "_cleanup",
+    value: function _cleanup() {
+      this._isClosed = true;
 
-  _cleanup () {
-    this._isClosed = true
-    this._protocol.removeListener('on_stream_data', this._handle_data)
-    this._protocol.removeListener('on_stream_close', this._handle_close)
-    this._protocol.removeListener('on_stream_error', this._handle_error)
-  }
+      this._protocol.removeListener('on_stream_data', this._handle_data);
 
-  _isId (streamid) {
-    return streamid === this._id
-  }
+      this._protocol.removeListener('on_stream_close', this._handle_close);
 
-  _read () { }
-  _write (chunk, encoding, callback) {
-    this._protocol.onStreamData(this._id, chunk)
-    callback()
-  }
-
-  _final (callback) {
-    if (!this._isClosed) {
-      this._protocol.onStreamClose(this._id)
-      this._cleanup()
+      this._protocol.removeListener('on_stream_error', this._handle_error);
     }
-    callback()
-  }
-}
-
-},{"stream":579}],497:[function(require,module,exports){
-const { createClientSwarm, ClientSwarm } = require('./lib/client-swarm')
-module.exports = { createClientSwarm, ClientSwarm }
-
-},{"./lib/client-swarm":498}],498:[function(require,module,exports){
-const isStream = require('is-stream')
-const websocket = require('websocket-stream')
-const HyperswarmProxyClient = require('hyperswarm-proxy/client')
-const debug = require('debug')('hyperswarm-ws:client')
-
-const DEFAULT_RECONNECT_DELAY = 1000
-
-class ClientSwarm extends HyperswarmProxyClient {
-  constructor (gateway, opts = {}) {
-    super(opts)
-
-    this.ws = isStream.duplex(gateway) ? gateway : websocket(gateway)
-    this.reconnectDelay = opts.reconnectDelay || DEFAULT_RECONNECT_DELAY
-
-    this.reconnect()
-  }
-
-  reconnect () {
-    this.ws.once('close', () => {
-      setTimeout(() => {
-        if (this.destroyed) {
-          return
-        }
-        this.reconnect()
-      }, this.reconnectDelay)
-    })
-    this.ws.on('error', err => this.emit('error', err))
-
-    super.reconnect(this.ws)
-  }
-
-  join (topic) {
-    debug(`joining topic: ${topic.toString('hex')}`)
-    super.join(topic)
-  }
-
-  leave (topic) {
-    debug(`leaving topic: ${topic.toString('hex')}`)
-    super.leave(topic)
-  }
-
-  destroy (callback) {
-    this.ws.destroy()
-    super.destroy(callback)
-  }
-}
-
-class SwarmError extends Error {
-  constructor (code, message) {
-    super(message)
-    this.code = code
-  }
-}
-
-async function createClientSwarm (gatewayUrls) {
-  let ws
-
-  for (const url of !Array.isArray(gatewayUrls) ? [gatewayUrls] : gatewayUrls) {
-    try {
-      ws = await tryGateway(url)
-      break
-    } catch (err) {
-      debug(`couldn't connect to gateway: ${url}`)
+  }, {
+    key: "_isId",
+    value: function _isId(streamid) {
+      return streamid === this._id;
     }
-  }
+  }, {
+    key: "_read",
+    value: function _read() {}
+  }, {
+    key: "_write",
+    value: function _write(chunk, encoding, callback) {
+      this._protocol.onStreamData(this._id, chunk);
 
-  if (!ws) {
-    throw new SwarmError(
-      'EBADGATEWAYS',
-      'Error connecting to any of the provided gateways'
-    )
-  }
+      callback();
+    }
+  }, {
+    key: "_final",
+    value: function _final(callback) {
+      if (!this._isClosed) {
+        this._protocol.onStreamClose(this._id);
 
-  return new ClientSwarm(ws)
-}
-
-function tryGateway (url) {
-  return new Promise((resolve, reject) => {
-    const ws = websocket(url)
-    ws.on('error', handleError)
-    ws.once('connect', () => {
-      ws.removeListener('error', handleError)
-      resolve(ws)
-    })
-
-    function handleError (err) {
-      if (['ENOTFOUND', 'ECONNREFUSED'].includes(err.code)) {
-        ws.removeListener('error', handleError)
-        reject(err)
-        return
+        this._cleanup();
       }
 
-      throw err
+      callback();
     }
-  })
+  }]);
+
+  return ProxyStream;
+}(Duplex);
+
+},{"stream":579}],497:[function(require,module,exports){
+"use strict";
+
+var _require = require('./lib/client-swarm'),
+    createClientSwarm = _require.createClientSwarm,
+    ClientSwarm = _require.ClientSwarm;
+
+module.exports = {
+  createClientSwarm: createClientSwarm,
+  ClientSwarm: ClientSwarm
+};
+
+},{"./lib/client-swarm":498}],498:[function(require,module,exports){
+"use strict";
+
+function _wrapNativeSuper(Class) { var _cache = typeof Map === "function" ? new Map() : undefined; _wrapNativeSuper = function _wrapNativeSuper(Class) { if (Class === null || !_isNativeFunction(Class)) return Class; if (typeof Class !== "function") { throw new TypeError("Super expression must either be null or a function"); } if (typeof _cache !== "undefined") { if (_cache.has(Class)) return _cache.get(Class); _cache.set(Class, Wrapper); } function Wrapper() { return _construct(Class, arguments, _getPrototypeOf(this).constructor); } Wrapper.prototype = Object.create(Class.prototype, { constructor: { value: Wrapper, enumerable: false, writable: true, configurable: true } }); return _setPrototypeOf(Wrapper, Class); }; return _wrapNativeSuper(Class); }
+
+function isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
+
+function _construct(Parent, args, Class) { if (isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
+
+function _isNativeFunction(fn) { return Function.toString.call(fn).indexOf("[native code]") !== -1; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _get(target, property, receiver) { if (typeof Reflect !== "undefined" && Reflect.get) { _get = Reflect.get; } else { _get = function _get(target, property, receiver) { var base = _superPropBase(target, property); if (!base) return; var desc = Object.getOwnPropertyDescriptor(base, property); if (desc.get) { return desc.get.call(receiver); } return desc.value; }; } return _get(target, property, receiver || target); }
+
+function _superPropBase(object, property) { while (!Object.prototype.hasOwnProperty.call(object, property)) { object = _getPrototypeOf(object); if (object === null) break; } return object; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var isStream = require('is-stream');
+
+var websocket = require('websocket-stream');
+
+var HyperswarmProxyClient = require('hyperswarm-proxy/client');
+
+var debug = require('debug')('hyperswarm-ws:client');
+
+var DEFAULT_RECONNECT_DELAY = 1000;
+
+var ClientSwarm =
+/*#__PURE__*/
+function (_HyperswarmProxyClien) {
+  _inherits(ClientSwarm, _HyperswarmProxyClien);
+
+  function ClientSwarm(gateway) {
+    var _this;
+
+    var opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    _classCallCheck(this, ClientSwarm);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(ClientSwarm).call(this, opts));
+    _this.ws = isStream.duplex(gateway) ? gateway : websocket(gateway);
+    _this.reconnectDelay = opts.reconnectDelay || DEFAULT_RECONNECT_DELAY;
+
+    _this.reconnect();
+
+    return _this;
+  }
+
+  _createClass(ClientSwarm, [{
+    key: "reconnect",
+    value: function reconnect() {
+      var _this2 = this;
+
+      this.ws.once('close', function () {
+        setTimeout(function () {
+          if (_this2.destroyed) {
+            return;
+          }
+
+          _this2.reconnect();
+        }, _this2.reconnectDelay);
+      });
+      this.ws.on('error', function (err) {
+        return _this2.emit('error', err);
+      });
+
+      _get(_getPrototypeOf(ClientSwarm.prototype), "reconnect", this).call(this, this.ws);
+    }
+  }, {
+    key: "join",
+    value: function join(topic) {
+      debug("joining topic: ".concat(topic.toString('hex')));
+
+      _get(_getPrototypeOf(ClientSwarm.prototype), "join", this).call(this, topic);
+    }
+  }, {
+    key: "leave",
+    value: function leave(topic) {
+      debug("leaving topic: ".concat(topic.toString('hex')));
+
+      _get(_getPrototypeOf(ClientSwarm.prototype), "leave", this).call(this, topic);
+    }
+  }, {
+    key: "destroy",
+    value: function destroy(callback) {
+      this.ws.destroy();
+
+      _get(_getPrototypeOf(ClientSwarm.prototype), "destroy", this).call(this, callback);
+    }
+  }]);
+
+  return ClientSwarm;
+}(HyperswarmProxyClient);
+
+var SwarmError =
+/*#__PURE__*/
+function (_Error) {
+  _inherits(SwarmError, _Error);
+
+  function SwarmError(code, message) {
+    var _this3;
+
+    _classCallCheck(this, SwarmError);
+
+    _this3 = _possibleConstructorReturn(this, _getPrototypeOf(SwarmError).call(this, message));
+    _this3.code = code;
+    return _this3;
+  }
+
+  return SwarmError;
+}(_wrapNativeSuper(Error));
+
+function createClientSwarm(gatewayUrls) {
+  var ws, _iteratorNormalCompletion, _didIteratorError, _iteratorError, _iterator, _step, url;
+
+  return regeneratorRuntime.async(function createClientSwarm$(_context) {
+    while (1) {
+      switch (_context.prev = _context.next) {
+        case 0:
+          _iteratorNormalCompletion = true;
+          _didIteratorError = false;
+          _iteratorError = undefined;
+          _context.prev = 3;
+          _iterator = (!Array.isArray(gatewayUrls) ? [gatewayUrls] : gatewayUrls)[Symbol.iterator]();
+
+        case 5:
+          if (_iteratorNormalCompletion = (_step = _iterator.next()).done) {
+            _context.next = 20;
+            break;
+          }
+
+          url = _step.value;
+          _context.prev = 7;
+          _context.next = 10;
+          return regeneratorRuntime.awrap(tryGateway(url));
+
+        case 10:
+          ws = _context.sent;
+          return _context.abrupt("break", 20);
+
+        case 14:
+          _context.prev = 14;
+          _context.t0 = _context["catch"](7);
+          debug("couldn't connect to gateway: ".concat(url));
+
+        case 17:
+          _iteratorNormalCompletion = true;
+          _context.next = 5;
+          break;
+
+        case 20:
+          _context.next = 26;
+          break;
+
+        case 22:
+          _context.prev = 22;
+          _context.t1 = _context["catch"](3);
+          _didIteratorError = true;
+          _iteratorError = _context.t1;
+
+        case 26:
+          _context.prev = 26;
+          _context.prev = 27;
+
+          if (!_iteratorNormalCompletion && _iterator["return"] != null) {
+            _iterator["return"]();
+          }
+
+        case 29:
+          _context.prev = 29;
+
+          if (!_didIteratorError) {
+            _context.next = 32;
+            break;
+          }
+
+          throw _iteratorError;
+
+        case 32:
+          return _context.finish(29);
+
+        case 33:
+          return _context.finish(26);
+
+        case 34:
+          if (ws) {
+            _context.next = 36;
+            break;
+          }
+
+          throw new SwarmError('EBADGATEWAYS', 'Error connecting to any of the provided gateways');
+
+        case 36:
+          return _context.abrupt("return", new ClientSwarm(ws));
+
+        case 37:
+        case "end":
+          return _context.stop();
+      }
+    }
+  }, null, null, [[3, 22, 26, 34], [7, 14], [27,, 29, 33]]);
 }
 
-module.exports = { createClientSwarm, ClientSwarm }
+function tryGateway(url) {
+  return new Promise(function (resolve, reject) {
+    var ws = websocket(url);
+    ws.on('error', handleError);
+    ws.once('connect', function () {
+      ws.removeListener('error', handleError);
+      resolve(ws);
+    });
+
+    function handleError(err) {
+      if (['ENOTFOUND', 'ECONNREFUSED'].includes(err.code)) {
+        ws.removeListener('error', handleError);
+        reject(err);
+        return;
+      }
+
+      throw err;
+    }
+  });
+}
+
+module.exports = {
+  createClientSwarm: createClientSwarm,
+  ClientSwarm: ClientSwarm
+};
 
 },{"debug":435,"hyperswarm-proxy/client":493,"is-stream":499,"websocket-stream":618}],499:[function(require,module,exports){
 'use strict';
 
-const isStream = stream =>
-	stream !== null &&
-	typeof stream === 'object' &&
-	typeof stream.pipe === 'function';
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-isStream.writable = stream =>
-	isStream(stream) &&
-	stream.writable !== false &&
-	typeof stream._write === 'function' &&
-	typeof stream._writableState === 'object';
+var isStream = function isStream(stream) {
+  return stream !== null && _typeof(stream) === 'object' && typeof stream.pipe === 'function';
+};
 
-isStream.readable = stream =>
-	isStream(stream) &&
-	stream.readable !== false &&
-	typeof stream._read === 'function' &&
-	typeof stream._readableState === 'object';
+isStream.writable = function (stream) {
+  return isStream(stream) && stream.writable !== false && typeof stream._write === 'function' && _typeof(stream._writableState) === 'object';
+};
 
-isStream.duplex = stream =>
-	isStream.writable(stream) &&
-	isStream.readable(stream);
+isStream.readable = function (stream) {
+  return isStream(stream) && stream.readable !== false && typeof stream._read === 'function' && _typeof(stream._readableState) === 'object';
+};
 
-isStream.transform = stream =>
-	isStream.duplex(stream) &&
-	typeof stream._transform === 'function' &&
-	typeof stream._transformState === 'object';
+isStream.duplex = function (stream) {
+  return isStream.writable(stream) && isStream.readable(stream);
+};
+
+isStream.transform = function (stream) {
+  return isStream.duplex(stream) && typeof stream._transform === 'function' && _typeof(stream._transformState) === 'object';
+};
 
 module.exports = isStream;
 
