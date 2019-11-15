@@ -114,6 +114,7 @@ define([
               // TODO implement
             }
           } else {
+            window.RecogitoTelemetry.sendOpen(selection.annotation)
             self.open(selection);
           }
 
@@ -139,6 +140,7 @@ define([
 
         /** 'Cancel' clears the selection and closes the editor **/
         onCancel = function() {
+          window.RecogitoTelemetry.sendClose(self.currentSelection.annotation)
           selectionHandler.clearSelection();
           self.close();
         },

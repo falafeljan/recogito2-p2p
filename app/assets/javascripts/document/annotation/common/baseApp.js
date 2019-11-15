@@ -39,7 +39,7 @@ define([
       this.notebook = new FromMeToYou.RequestSwarm(
         'hypermerge:/CFTZKSVGnKVVZMf6z9Kp8QUswM6SZATtwwk63Z7L26QR',
         {
-          handleError: function (err) {
+          handleError: function(err) {
             console.error('error', err);
           },
         }
@@ -69,12 +69,13 @@ define([
         self.loadAnnotations();
       }
       RecogitoTelemetry.setUserId(userId);
-      discovery.userId = userId
+      discovery.userId = userId;
     });
 
     if (!RecogitoTelemetry.getUserId() || (useP2P && !!self.docUrl)) {
       discovery.open();
     } else {
+      RecogitoTelemetry.sendInit();
       self.loadAnnotations();
     }
 
@@ -169,7 +170,9 @@ define([
         ? self.notebook.updateAnnotation(annotation)
         : self.notebook.createAnnotation(annotation);
     };
-    var mutateDatabase = wrapPromise(API.storeAnnotation(annotationStub));
+    var mutateDatabase = function() {
+      return wrapPromise(API.storeAnnotation(annotationStub));
+    };
 
     var mutation = useP2P
       ? mutateP2P(annotationStub)
@@ -177,8 +180,12 @@ define([
 
     mutation
       .then(function(annotation) {
-        console.log(JSON.stringify(annotationStub));
-        console.log(JSON.stringify(annotation));
+        if (!annotationStub.annotation_id) {
+          window.RecogitoTelemetry.sendCreate(annotation);
+        } else {
+          window.RecogitoTelemetry.sendEdit(annotation);
+        }
+
         self.annotations.addOrReplace(annotation);
         self.header.incrementAnnotationCount();
         self.header.updateContributorInfo(Config.me);

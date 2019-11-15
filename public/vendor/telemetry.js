@@ -70,7 +70,7 @@ function sendInit() {
   });
 }
 
-function sendCreate(newAnnotation) {
+function sendCreate(annotation) {
   return regeneratorRuntime.async(function sendCreate$(_context4) {
     while (1) {
       switch (_context4.prev = _context4.next) {
@@ -78,7 +78,7 @@ function sendCreate(newAnnotation) {
           return _context4.abrupt("return", sendEvent({
             type: 'create',
             userId: userId,
-            newAnnotation: newAnnotation
+            annotation: annotation
           }));
 
         case 1:
@@ -108,16 +108,15 @@ function sendOpen(annotation) {
   });
 }
 
-function sendWrite(annotation, newAnnotation) {
-  return regeneratorRuntime.async(function sendWrite$(_context6) {
+function sendEdit(annotation) {
+  return regeneratorRuntime.async(function sendEdit$(_context6) {
     while (1) {
       switch (_context6.prev = _context6.next) {
         case 0:
           return _context6.abrupt("return", sendEvent({
-            type: 'open',
+            type: 'edit',
             userId: userId,
-            annotation: annotation,
-            newAnnotation: newAnnotation
+            annotation: annotation
           }));
 
         case 1:
@@ -128,16 +127,15 @@ function sendWrite(annotation, newAnnotation) {
   });
 }
 
-function sendEdit(annotation, updatedAnnotation) {
-  return regeneratorRuntime.async(function sendEdit$(_context7) {
+function sendClose(annotation) {
+  return regeneratorRuntime.async(function sendClose$(_context7) {
     while (1) {
       switch (_context7.prev = _context7.next) {
         case 0:
           return _context7.abrupt("return", sendEvent({
-            type: 'open',
+            type: 'close',
             userId: userId,
-            annotation: annotation,
-            updatedAnnotation: updatedAnnotation
+            annotation: annotation
           }));
 
         case 1:
@@ -148,13 +146,13 @@ function sendEdit(annotation, updatedAnnotation) {
   });
 }
 
-function sendClose(annotation) {
-  return regeneratorRuntime.async(function sendClose$(_context8) {
+function sendDelete(annotation) {
+  return regeneratorRuntime.async(function sendDelete$(_context8) {
     while (1) {
       switch (_context8.prev = _context8.next) {
         case 0:
           return _context8.abrupt("return", sendEvent({
-            type: 'open',
+            type: 'delete',
             userId: userId,
             annotation: annotation
           }));
@@ -174,9 +172,9 @@ module.exports = {
   sendInit: sendInit,
   sendCreate: sendCreate,
   sendOpen: sendOpen,
-  sendWrite: sendWrite,
   sendEdit: sendEdit,
-  sendClose: sendClose
+  sendClose: sendClose,
+  sendDelete: sendDelete
 };
 
 },{"node-fetch":2}],2:[function(require,module,exports){
