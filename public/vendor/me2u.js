@@ -1625,7 +1625,6 @@ function (_Duplex) {
           var name = _Object$keys[_i];
 
           if (ResponseCode[name] === decoded.code) {
-            console.log(name, decoded);
             this.emit('response', decoded);
           }
         }

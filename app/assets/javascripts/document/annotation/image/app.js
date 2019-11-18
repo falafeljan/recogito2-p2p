@@ -137,7 +137,6 @@ require([
     olMap.on('postrender', onMapMove);
 
     this.loadIndicator = loadIndicator;
-    // this.loadAnnotations(loadIndicator);
   };
   App.prototype = Object.create(BaseApp.prototype);
 

@@ -155,25 +155,31 @@ define([
     editor.on('updateAnnotation', onUpdateAnnotation);
     editor.on('deleteAnnotation', onDeleteAnnotation);
 
+    this.relationsLayer = relationsLayer;
+    this.toolbar = toolbar;
+
     rangy.init();
 
     initPage();
 
     this.loadIndicator = loadIndicator;
-    this._postAnnotationsLoadedFixMe = function(annotationsPromise) {
-      return annotationsPromise
-        .then(function(annotations) {
-          toolbar.initTimefilter(annotations);
-        })
-        .then(relationsLayer.init);
-    };
   };
   App.prototype = Object.create(BaseApp.prototype);
 
   /** override - the tex UI needs annotations sorted by char offset, descending **/
-  App.prototype.onAnnotationsLoaded = function(annotations) {
+  /* App.prototype.onAnnotationsLoaded = function(annotations) {
     var sorted = AnnotationUtils.sortByOffsetDesc(annotations);
     BaseApp.prototype.onAnnotationsLoaded.call(this, sorted);
+  }; */
+
+  App.prototype.preProcessAnnotations = function(annotations) {
+    this.toolbar.initTimefilter(annotations);
+    this.relationsLayer.init(annotations);
+    return annotations;
+  };
+
+  App.prototype.postProcessAnnotations = function(annotations) {
+    return AnnotationUtils.sortByOffsetDesc(annotations);
   };
 
   return App;

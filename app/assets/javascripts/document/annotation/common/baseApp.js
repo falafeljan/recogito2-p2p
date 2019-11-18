@@ -47,8 +47,9 @@ define([
       '/document/' +
       Config.documentId;
 
+    var container = document.getElementById('p2p-discovery');
     var discoveryDialog = window.RecogitoDiscovery.createDiscovery(
-      document.getElementById('p2p-discovery'),
+      container,
       null,
       {
         userId: RecogitoTelemetry.getUserId(),
@@ -124,19 +125,6 @@ define([
 
   BaseApp.prototype.loadAnnotations = function() {
     var self = this;
-    var callback =
-      typeof this._postAnnotationsLoadedFixMe === 'function'
-        ? this._postAnnotationsLoadedFixMe
-        : null;
-    var callbackWrapper = function(promise) {
-      if (typeof callback !== 'function') {
-        return promise;
-      }
-
-      var ret = callback(promise);
-      return ret instanceof Promise ? ret : promise;
-    };
-
     var loadAnnotations = useP2P
       ? function() {
           return self.notebook.getAnnotations();
@@ -148,13 +136,22 @@ define([
         };
 
     return PlaceUtils.initGazetteers().done(function() {
-      callbackWrapper(loadAnnotations())
+      loadAnnotations()
+        .then(self.preProcessAnnotations.bind(self))
         .then(self.onAnnotationsLoaded.bind(self))
         .then(self.loadIndicator.destroy)
         .catch(self.onAnnotationsLoadError.bind(self))
         .then(self.loadIndicator.destroy)
         .then(self.pollAnnotations.bind(self));
     });
+  };
+
+  BaseApp.prototype.preProcessAnnotations = function(annotations) {
+    return annotations;
+  };
+
+  BaseApp.prototype.postProcessAnnotations = function(annotations) {
+    return annotations;
   };
 
   BaseApp.prototype.onAnnotationsLoaded = function(annotations) {
@@ -167,10 +164,11 @@ define([
         if (scrollTo > 0) jQuery('html, body').animate({ scrollTop: scrollTo });
       };
 
-    this.annotations.add(annotations);
-    this.header.incrementAnnotationCount(annotations.length);
+    var processed = this.postProcessAnnotations(annotations);
+    this.annotations.add(processed);
+    this.header.incrementAnnotationCount(processed.length);
     // var startTime = new Date().getTime();
-    this.highlighter.initPage(annotations);
+    this.highlighter.initPage(processed);
     // console.log('took ' + (new Date().getTime() - startTime) + 'ms');
 
     if (urlHash) {
@@ -194,15 +192,23 @@ define([
     this.notebook.getAnnotations({ subscribe: true }).then(subscription => {
       self.subscription = subscription;
       self.subscription.on('pub', annotations => {
-        self.annotations.addOrReplace(annotations);
-        // FIXME: add this again (not increment---replace)
-        // this.header.incrementAnnotationCount(annotations.length);
-        self.highlighter.initPage(annotations);
+        try {
+          var processed = self.postProcessAnnotations(
+            self.preProcessAnnotations(annotations)
+          );
+          self.annotations.addOrReplace(processed);
+          // FIXME: add this again (not increment---replace)
+          // this.header.incrementAnnotationCount(annotations.length);
+          self.highlighter.addOrRefreshAnnotations(processed);
+        } catch (err) {
+          console.error('Error while loading annotations in real-time:\n', err);
+        }
       });
     });
   };
 
-  BaseApp.prototype.onAnnotationsLoadError = function(annotations) {
+  BaseApp.prototype.onAnnotationsLoadError = function(err) {
+    console.error(err);
     // TODO visual notification
   };
 
@@ -246,18 +252,35 @@ define([
   };
 
   BaseApp.prototype.upsertAnnotationBatch = function(annotationStubs) {
-    var self = this,
-      // Finds the original stub that corresponds to the annotation
-      findStub = function(annotation) {
-        return annotationStubs.find(function(stub) {
-          // Determine identity based on the anchor
-          return stub.anchor === annotation.anchor;
-        });
-      };
+    var self = this;
+    // Finds the original stub that corresponds to the annotation
+    var findStub = function(annotation) {
+      return annotationStubs.find(function(stub) {
+        // Determine identity based on the anchor
+        return stub.anchor === annotation.anchor;
+      });
+    };
+
+    var mutateP2P = function(annotations) {
+      return Promise.all(
+        annotations.map(function(annotation) {
+          return typeof annotation.id !== 'undefined'
+            ? self.notebook.updateAnnotation(annotation)
+            : self.notebook.createAnnotation(annotation);
+        })
+      );
+    };
+    var mutateDatabase = function(annotationStubs) {
+      return wrapPromise(API.storeAnnotationBatch(annotationStubs));
+    };
+
+    var mutation = useP2P
+      ? mutateP2P(annotationStubs)
+      : mutateDatabase(annotationStubs);
 
     self.header.showStatusSaving();
-    API.storeAnnotationBatch(annotationStubs)
-      .done(function(annotations) {
+    mutation
+      .then(function(annotations) {
         self.annotations.addOrReplace(annotations);
         self.header.incrementAnnotationCount(annotations.length);
         self.header.updateContributorInfo(Config.me);
@@ -271,7 +294,7 @@ define([
           self.highlighter.refreshAnnotation(stub);
         });
       })
-      .fail(function(error) {
+      .catch(function(error) {
         self.header.showSaveError();
       });
   };

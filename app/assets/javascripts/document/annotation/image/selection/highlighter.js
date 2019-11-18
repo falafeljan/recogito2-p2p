@@ -79,6 +79,10 @@ define([
             // TODO for future use (style change based on annotation properties)
           },
 
+          addOrRefreshAnnotations = function(annotations) {
+            return initPage(annotations);
+          },
+
           /** @override **/
           removeAnnotation = function(annotation) {
             var layer = getLayer(annotation);
