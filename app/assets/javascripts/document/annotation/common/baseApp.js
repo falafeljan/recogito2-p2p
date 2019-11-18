@@ -16,7 +16,7 @@ define([
   RecogitoDiscovery,
   RecogitoTelemetry
 ) {
-  var useP2P = false;
+  var useP2P = true;
   var wrapPromise = function(fauxPromise) {
     return new Promise(function(resolve, reject) {
       return fauxPromise.then(resolve).fail(reject);
@@ -35,23 +35,19 @@ define([
     this.selector = selector;
     this.header = new Header();
 
-    this.discovery = this.setupDiscovery();
-
-    if (useP2P) {
-      this.notebook = new FromMeToYou.RequestSwarm(
-        'hypermerge:/CFTZKSVGnKVVZMf6z9Kp8QUswM6SZATtwwk63Z7L26QR',
-        {
-          handleError: function(err) {
-            console.error('error', err);
-          },
-        }
-      );
-    }
+    this.discoveryDialog = this.setupDiscovery();
   };
 
   BaseApp.prototype.setupDiscovery = function() {
     var self = this;
-    var discovery = window.RecogitoDiscovery.createDiscovery(
+    var target =
+      location.protocol +
+      '//' +
+      location.host +
+      '/document/' +
+      Config.documentId;
+
+    var discoveryDialog = window.RecogitoDiscovery.createDiscovery(
       document.getElementById('p2p-discovery'),
       null,
       {
@@ -60,38 +56,70 @@ define([
         allowOutsideClick: !!RecogitoTelemetry.getUserId(),
       }
     );
-    discovery.on('cancel', function() {
+    discoveryDialog.on('cancel', function() {
       if (!RecogitoTelemetry.getUserId() || (useP2P && !!self.docUrl)) {
         window.location.pathname = '/' + Config.me;
       }
     });
-    discovery.on('save', function(userId, docUrl) {
+    discoveryDialog.on('save', function(userId, docUrl) {
+      self.docUrl = docUrl;
+
       if (!RecogitoTelemetry.getUserId()) {
         RecogitoTelemetry.sendInit();
+      }
+
+      /* FIXME: old swarm should be destroyed and replaced by the new
+          one that points to the other (?) notebook. */
+      if (useP2P) {
+        if (!self.notebook) {
+          self.initSwarm().then(function() {
+            self.loadAnnotations();
+          });
+        }
+      } else {
         self.loadAnnotations();
       }
+
       RecogitoTelemetry.setUserId(userId);
-      discovery.userId = userId;
+      discoveryDialog.userId = userId;
     });
 
-    if (!RecogitoTelemetry.getUserId() || (useP2P && !!self.docUrl)) {
-      discovery.open();
+    if (!RecogitoTelemetry.getUserId() || (useP2P && !self.docUrl)) {
+      discoveryDialog.open();
     } else {
       RecogitoTelemetry.sendInit();
       self.loadAnnotations();
     }
+
+    this.discoverySwarm = new FromMeToYou.DiscoverySwarm(target);
+    this.discoverySwarm.on('ready', function() {
+      self.discoverySwarm.on('announce', function(url) {
+        discoveryDialog.setDocuments(self.discoverySwarm.uniqueAnnouncements);
+      });
+    });
 
     var modalLink = document.createElement('a');
     modalLink.href = '#';
     modalLink.innerHTML = 'Study Settings';
     modalLink.onclick = function(event) {
       event.preventDefault();
-      discovery.open();
+      discoveryDialog.open();
     };
     var ref = document.querySelector('.logged-in');
     ref.parentNode.insertBefore(modalLink, ref);
 
-    return discovery;
+    return discoveryDialog;
+  };
+
+  BaseApp.prototype.initSwarm = function() {
+    var self = this;
+    this.notebook = new FromMeToYou.RequestSwarm(this.docUrl, {
+      handleError: function(err) {
+        console.error('error', err);
+      },
+    });
+
+    return new Promise(resolve => self.notebook.on('ready', resolve));
   };
 
   BaseApp.prototype.loadAnnotations = function() {
@@ -110,28 +138,26 @@ define([
     };
 
     var loadAnnotations = useP2P
-      ? new Promise(function(resolve) {
-          self.notebook.on('ready', function() {
-            self.notebook.getAnnotations().then(resolve);
-          });
-        })
-      : wrapPromise(
-          API.listAnnotationsInPart(Config.documentId, Config.partSequenceNo)
-        );
+      ? function() {
+          return self.notebook.getAnnotations();
+        }
+      : function() {
+          wrapPromise(
+            API.listAnnotationsInPart(Config.documentId, Config.partSequenceNo)
+          );
+        };
 
     return PlaceUtils.initGazetteers().done(function() {
-      callbackWrapper(loadAnnotations)
+      callbackWrapper(loadAnnotations())
         .then(self.onAnnotationsLoaded.bind(self))
         .then(self.loadIndicator.destroy)
         .catch(self.onAnnotationsLoadError.bind(self))
-        .then(self.loadIndicator.destroy);
+        .then(self.loadIndicator.destroy)
+        .then(self.pollAnnotations.bind(self));
     });
   };
 
   BaseApp.prototype.onAnnotationsLoaded = function(annotations) {
-    // FIXME: remove this one
-    console.log(annotations);
-
     var urlHash = window.location.hash
         ? window.location.hash.substring(1)
         : false,
@@ -157,6 +183,23 @@ define([
 
     // In order to support chaining
     return annotations;
+  };
+
+  BaseApp.prototype.pollAnnotations = function() {
+    if (!useP2P || !this.notebook) {
+      return;
+    }
+
+    var self = this;
+    this.notebook.getAnnotations({ subscribe: true }).then(subscription => {
+      self.subscription = subscription;
+      self.subscription.on('pub', annotations => {
+        self.annotations.addOrReplace(annotations);
+        // FIXME: add this again (not increment---replace)
+        // this.header.incrementAnnotationCount(annotations.length);
+        self.highlighter.initPage(annotations);
+      });
+    });
   };
 
   BaseApp.prototype.onAnnotationsLoadError = function(annotations) {
