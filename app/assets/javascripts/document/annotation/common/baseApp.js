@@ -324,14 +324,25 @@ define([
   BaseApp.prototype.onDeleteAnnotation = function(annotation) {
     var self = this;
 
+    var mutateP2P = function(annotation) {
+      return self.notebook.deleteAnnotation(annotation.annotation_id);
+    };
+    var mutateDatabase = function() {
+      return wrapPromise(API.deleteAnnotation(annotation.annotation_id));
+    };
+
+    var mutation = useP2P
+      ? mutateP2P(annotation)
+      : mutateDatabase(annotation);
+
     this.highlighter.removeAnnotation(annotation);
-    API.deleteAnnotation(annotation.annotation_id)
-      .done(function() {
+    mutation
+      .then(function() {
         self.annotations.remove(annotation);
         self.header.incrementAnnotationCount(-1);
         self.header.showStatusSaved();
       })
-      .fail(function(error) {
+      .catch(function(error) {
         self.header.showSaveError(error);
       });
   };
