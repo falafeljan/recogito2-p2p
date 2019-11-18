@@ -70,10 +70,22 @@ define([
       },
       /** @override **/
       refreshAnnotation = function(annotation) {
-        // TODO for future use (style change based on annotation properties)
+        // TODO blah
       },
       addOrRefreshAnnotations = function(annotations) {
-        return initPage(annotations);
+        var existing = [],
+          added = [];
+
+        annotations.forEach(function(annotation) {
+          var layer = getLayer(annotation);
+          if (!layer) {
+            added.push(annotation);
+          } else {
+            layer.removeAnnotation(annotation);
+          }
+        });
+
+        initPage(annotations);
       },
       /** @override **/
       removeAnnotation = function(annotation) {
