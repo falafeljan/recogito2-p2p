@@ -330,7 +330,8 @@ define([
       },
       addOrRefreshAnnotations = function(annotations) {
         var existing = [],
-          added = [];
+          added = [],
+          removed = [];
 
         annotations.forEach(function(annotation) {
           var spans = jQuery('[data-id=' + annotation.annotation_id + ']');
@@ -341,8 +342,22 @@ define([
           }
         });
 
+        jQuery.each(jQuery('[data-id].annotation'), function(i, span) {
+          var annotation_id = span.getAttribute('data-id');
+          if (
+            !annotations.find(
+              annotation => annotation.annotation_id === annotation_id
+            )
+          ) {
+            removed.push({ annotation_id });
+          }
+        });
+
         existing.forEach(function(annotation) {
           refreshAnnotation(annotation);
+        });
+        removed.forEach(function(annotation) {
+          removeAnnotation(annotation);
         });
         initPage(added);
       },
