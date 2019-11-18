@@ -164,7 +164,9 @@ define([
         if (scrollTo > 0) jQuery('html, body').animate({ scrollTop: scrollTo });
       };
 
-    var processed = this.postProcessAnnotations(annotations);
+    var processed = this.postProcessAnnotations(
+      this.filterAnnotations(annotations)
+    );
     this.annotations.add(processed);
     this.header.incrementAnnotationCount(processed.length);
     // var startTime = new Date().getTime();
@@ -183,6 +185,16 @@ define([
     return annotations;
   };
 
+  BaseApp.prototype.filterAnnotations = function(annotations) {
+    return annotations.filter(function(annotation) {
+      if (!annotation.annotates || !annotation.annotates.filepart_id) {
+        return true;
+      } else {
+        return annotation.annotates.filepart_id === Config.partId;
+      }
+    });
+  };
+
   BaseApp.prototype.pollAnnotations = function() {
     if (!useP2P || !this.notebook) {
       return;
@@ -194,7 +206,7 @@ define([
       self.subscription.on('pub', annotations => {
         try {
           var processed = self.postProcessAnnotations(
-            self.preProcessAnnotations(annotations)
+            self.filterAnnotations(self.preProcessAnnotations(annotations))
           );
           self.annotations.addOrReplace(processed);
           // FIXME: add this again (not increment---replace)
@@ -331,9 +343,7 @@ define([
       return wrapPromise(API.deleteAnnotation(annotation.annotation_id));
     };
 
-    var mutation = useP2P
-      ? mutateP2P(annotation)
-      : mutateDatabase(annotation);
+    var mutation = useP2P ? mutateP2P(annotation) : mutateDatabase(annotation);
 
     this.highlighter.removeAnnotation(annotation);
     mutation
