@@ -4,7 +4,7 @@ require.config({
   paths: {
     marked: '../../../web-modules/main/webjars/lib/marked/marked.min',
     i18n: '../../../../../public/vendor/i18n',
-    'from-me-to-you': '../../../../../public/vendor/me2u',
+    'hyperwell': '../../../../../public/vendor/hyperwell',
     'recogito-discovery': '../../../../../public/vendor/discovery',
     'recogito-telemetry': '../../../../../public/vendor/telemetry',
   },

@@ -330,8 +330,7 @@ define([
       },
       addOrRefreshAnnotations = function(annotations) {
         var existing = [],
-          added = [],
-          removed = [];
+          added = [];
 
         annotations.forEach(function(annotation) {
           var spans = jQuery('[data-id=' + annotation.annotation_id + ']');

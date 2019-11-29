@@ -4,23 +4,30 @@ define([
   'common/config',
   'common/utils/placeUtils',
   'document/annotation/common/page/header',
-  'from-me-to-you',
-  'recogito-discovery',
+  'hyperwell',
   'recogito-telemetry',
-], function(
-  API,
-  Config,
-  PlaceUtils,
-  Header,
-  FromMeToYou,
-  RecogitoDiscovery,
-  RecogitoTelemetry
-) {
+], function(API, Config, PlaceUtils, Header, Hyperwell, RecogitoTelemetry) {
   var useP2P = true;
   var wrapPromise = function(fauxPromise) {
     return new Promise(function(resolve, reject) {
       return fauxPromise.then(resolve).fail(reject);
     });
+  };
+
+  var docUrl = 'hypermerge:/2Sd2WKQWfe8UtuBndq6ALmzJy8J4X9DxnQEp9Xxbqz3w'; // 'hypermerge:/8kXXgqWxUQAXNYUvLg1jAg6mv76RdDDp9AqLNYmfPY8W';
+  var getAnnotationId = function(annotationId) {
+    return annotationId.split('/').pop();
+  };
+  var denormalize = function(annotations) {
+    return Array.isArray(annotations)
+      ? annotations.map(function(annotation) {
+          return Object.assign({}, annotation, {
+            annotation_id: getAnnotationId(annotation.id),
+          });
+        })
+      : Object.assign({}, annotations, {
+          annotation_id: getAnnotationId(annotations.id),
+        });
   };
 
   window.RecogitoTelemetry = RecogitoTelemetry;
@@ -35,99 +42,21 @@ define([
     this.selector = selector;
     this.header = new Header();
 
-    this.discoveryDialog = this.setupDiscovery();
-  };
-
-  BaseApp.prototype.setupDiscovery = function() {
-    var self = this;
-    var target =
-      location.protocol +
-      '//' +
-      location.host +
-      '/document/' +
-      Config.documentId;
-
-    var container = document.getElementById('p2p-discovery');
-    var discoveryDialog = window.RecogitoDiscovery.createDiscovery(
-      container,
-      null,
-      {
-        userId: RecogitoTelemetry.getUserId(),
-        useP2P: useP2P,
-        allowOutsideClick: !!RecogitoTelemetry.getUserId(),
-      }
-    );
-    discoveryDialog.on('cancel', function() {
-      if (!RecogitoTelemetry.getUserId() || (useP2P && !!self.docUrl)) {
-        window.location.pathname = '/' + Config.me;
-      }
-    });
-    discoveryDialog.on('save', function(userId, docUrl) {
-      self.docUrl = docUrl;
-
-      if (!RecogitoTelemetry.getUserId()) {
-        RecogitoTelemetry.sendInit();
-      }
-
-      /* FIXME: old swarm should be destroyed and replaced by the new
-          one that points to the other (?) notebook. */
-      if (useP2P) {
-        if (!self.notebook) {
-          self.initSwarm().then(function() {
-            self.loadAnnotations();
-          });
-        }
-      } else {
-        self.loadAnnotations();
-      }
-
-      RecogitoTelemetry.setUserId(userId);
-      discoveryDialog.userId = userId;
+    this.hyperwellClient = new Hyperwell.HyperwellClient('localhost', docUrl, {
+      port: 4000,
+      ssl: false,
     });
 
-    if (!RecogitoTelemetry.getUserId() || (useP2P && !self.docUrl)) {
-      discoveryDialog.open();
-    } else {
-      RecogitoTelemetry.sendInit();
-      self.loadAnnotations();
-    }
-
-    this.discoverySwarm = new FromMeToYou.DiscoverySwarm(target);
-    this.discoverySwarm.on('ready', function() {
-      self.discoverySwarm.on('announce', function(url) {
-        discoveryDialog.setDocuments(self.discoverySwarm.uniqueAnnouncements);
-      });
-    });
-
-    var modalLink = document.createElement('a');
-    modalLink.href = '#';
-    modalLink.innerHTML = 'Study Settings';
-    modalLink.onclick = function(event) {
-      event.preventDefault();
-      discoveryDialog.open();
-    };
-    var ref = document.querySelector('.logged-in');
-    ref.parentNode.insertBefore(modalLink, ref);
-
-    return discoveryDialog;
-  };
-
-  BaseApp.prototype.initSwarm = function() {
-    var self = this;
-    this.notebook = new FromMeToYou.RequestSwarm(this.docUrl, {
-      handleError: function(err) {
-        console.error('error', err);
-      },
-    });
-
-    return new Promise(resolve => self.notebook.on('ready', resolve));
+    RecogitoTelemetry.setUserId(Config.me);
+    RecogitoTelemetry.sendInit();
+    this.loadAnnotations();
   };
 
   BaseApp.prototype.loadAnnotations = function() {
     var self = this;
     var loadAnnotations = useP2P
       ? function() {
-          return self.notebook.getAnnotations();
+          return self.hyperwellClient.getAnnotations();
         }
       : function() {
           wrapPromise(
@@ -165,8 +94,9 @@ define([
       };
 
     var processed = this.postProcessAnnotations(
-      this.filterAnnotations(annotations)
+      this.filterAnnotations(denormalize(annotations))
     );
+    console.log(processed);
     this.annotations.add(processed);
     this.header.incrementAnnotationCount(processed.length);
     // var startTime = new Date().getTime();
@@ -196,22 +126,42 @@ define([
   };
 
   BaseApp.prototype.pollAnnotations = function() {
-    if (!useP2P || !this.notebook) {
+    if (!useP2P) {
       return;
     }
 
     var self = this;
-    this.notebook.getAnnotations({ subscribe: true }).then(subscription => {
+    this.hyperwellClient.subscribeToAnnotations().then(function(subscription) {
       self.subscription = subscription;
-      self.subscription.on('pub', annotations => {
+      self.subscription.on('change', diff => {
         try {
-          var processed = self.postProcessAnnotations(
-            self.filterAnnotations(self.preProcessAnnotations(annotations))
+          var addedAnnotations = self.postProcessAnnotations(
+            self.filterAnnotations(
+              self.preProcessAnnotations(denormalize(diff.inserted))
+            )
           );
-          self.annotations.addOrReplace(processed);
-          // FIXME: add this again (not increment---replace)
-          // this.header.incrementAnnotationCount(annotations.length);
-          self.highlighter.addOrRefreshAnnotations(processed);
+          var changedAnnotations = self.postProcessAnnotations(
+            self.filterAnnotations(
+              self.preProcessAnnotations(denormalize(diff.changed))
+            )
+          );
+          if (addedAnnotations.length > 0) {
+            self.annotations.addOrReplace(addedAnnotations);
+            self.highlighter.initPage(addedAnnotations);
+          }
+          if (changedAnnotations.length > 0) {
+            self.annotations.addOrReplace(changedAnnotations);
+            changedAnnotations.forEach(function(annotation) {
+              self.highlighter.refreshAnnotation(annotation);
+            });
+          }
+
+          var deletedAnnotations = denormalize(diff.deleted);
+          self.highlighter.removeAnnotations(deletedAnnotations);
+          self.annotations.remove(deletedAnnotations);
+          self.header.incrementAnnotationCount(
+            diff.inserted.length - diff.deleted.length
+          );
         } catch (err) {
           console.error('Error while loading annotations in real-time:\n', err);
         }
@@ -230,8 +180,8 @@ define([
 
     var mutateP2P = function(annotation) {
       return typeof annotation.id !== 'undefined'
-        ? self.notebook.updateAnnotation(annotation)
-        : self.notebook.createAnnotation(annotation);
+        ? self.hyperwellClient.updateAnnotation(annotation)
+        : self.hyperwellClient.createAnnotation(annotation);
     };
     var mutateDatabase = function() {
       return wrapPromise(API.storeAnnotation(annotationStub));
@@ -243,14 +193,18 @@ define([
 
     mutation
       .then(function(annotation) {
+        annotation = denormalize(annotation);
         if (!annotationStub.annotation_id) {
           window.RecogitoTelemetry.sendCreate(annotation);
         } else {
           window.RecogitoTelemetry.sendEdit(annotation);
         }
 
-        self.annotations.addOrReplace(annotation);
-        self.header.incrementAnnotationCount();
+        // if P2P is used, changes will be pushed automatically
+        if (!useP2P) {
+          self.annotations.addOrReplace(annotation);
+          self.header.incrementAnnotationCount();
+        }
         self.header.updateContributorInfo(Config.me);
         self.header.showStatusSaved();
 
@@ -277,8 +231,8 @@ define([
       return Promise.all(
         annotations.map(function(annotation) {
           return typeof annotation.id !== 'undefined'
-            ? self.notebook.updateAnnotation(annotation)
-            : self.notebook.createAnnotation(annotation);
+            ? self.hyperwellClient.updateAnnotation(annotation)
+            : self.hyperwellClient.createAnnotation(annotation);
         })
       );
     };
@@ -337,7 +291,7 @@ define([
     var self = this;
 
     var mutateP2P = function(annotation) {
-      return self.notebook.deleteAnnotation(annotation.annotation_id);
+      return self.hyperwellClient.deleteAnnotation(annotation);
     };
     var mutateDatabase = function() {
       return wrapPromise(API.deleteAnnotation(annotation.annotation_id));
