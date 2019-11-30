@@ -42,10 +42,13 @@ define([
     this.selector = selector;
     this.header = new Header();
 
-    this.hyperwellClient = new Hyperwell.HyperwellClient('localhost', docUrl, {
-      port: 4000,
-      ssl: false,
-    });
+    this.hyperwellClient = new Hyperwell.HyperwellClient(
+      'hyperwell.kassel.works',
+      docUrl,
+      {
+        ssl: true,
+      }
+    );
 
     RecogitoTelemetry.setUserId(Config.me);
     RecogitoTelemetry.sendInit();
