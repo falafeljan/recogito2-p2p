@@ -8,20 +8,18 @@ define([
   'common/utils/annotationUtils',
   'common/config',
   'common/hasEvents',
-  'document/annotation/common/editor/sections/sectionList'
+  'document/annotation/common/editor/sections/sectionList',
 ], function(AnnotationUtils, Config, HasEvents, SectionList) {
-
   var EditorBase = function(container, element, annotations, opts) {
     var self = this,
+      /** Handles common key events **/
+      onKeyDown = function(e) {
+        var key = e.which;
 
-        /** Handles common key events **/
-        onKeyDown = function(e) {
-          var key = e.which;
-
-          if (key === 27)
-            // ESC
-            self.fireEvent('escape');
-        };
+        if (key === 27)
+          // ESC
+          self.fireEvent('escape');
+      };
 
     if (!this.openSelection)
       throw 'Editor needs to implement .openSelection() method';
@@ -30,7 +28,7 @@ define([
     this.container = container;
     this.element = element;
 
-    this.autoscroll = (opts && opts.autoscroll) ? opts.autoscroll : false;
+    this.autoscroll = opts && opts.autoscroll ? opts.autoscroll : false;
 
     this.sectionList = new SectionList(element, annotations);
     this.currentSelection = false;
@@ -48,24 +46,27 @@ define([
 
   EditorBase.prototype.setPosition = function(bounds) {
     var self = this,
-        scrollTop = jQuery(document).scrollTop(),
-        offset = jQuery(this.container).offset(),
-        windowHeight = jQuery(window).height(),
-
-        // Fixes bounds to take into account text container offset and scroll
-        translatedBounds = {
-          bottom: bounds.bottom - offset.top + scrollTop,
-          height: bounds.height,
-          left: bounds.left - offset.left,
-          right: bounds.right - offset.left,
-          top: bounds.top - offset.top + scrollTop,
-          width: bounds.width
-        },
-
-        rectBefore, rectAfter;
+      scrollTop = jQuery(document).scrollTop(),
+      offset = jQuery(this.container).offset(),
+      windowHeight = jQuery(window).height(),
+      // Fixes bounds to take into account text container offset and scroll
+      translatedBounds = {
+        bottom: bounds.bottom - offset.top + scrollTop,
+        height: bounds.height,
+        left: bounds.left - offset.left,
+        right: bounds.right - offset.left,
+        top: bounds.top - offset.top + scrollTop,
+        width: bounds.width,
+      },
+      rectBefore,
+      rectAfter;
 
     // Default orientation
-    this.element.css({ top: translatedBounds.bottom, left: translatedBounds.left, bottom: 'auto' });
+    this.element.css({
+      top: translatedBounds.bottom,
+      left: translatedBounds.left,
+      bottom: 'auto',
+    });
     rectBefore = this.element[0].getBoundingClientRect();
 
     // Flip horizontally, if popup exceeds screen width
@@ -77,9 +78,15 @@ define([
     }
 
     // If popup exceeds screen height, flip vertically if possible
-    if (rectBefore.bottom > windowHeight && rectBefore.y > this.element.outerHeight()) {
+    if (
+      rectBefore.bottom > windowHeight &&
+      rectBefore.y > this.element.outerHeight()
+    ) {
       this.element.addClass('align-bottom');
-      this.element.css({ top: 'auto', bottom: self.container.clientHeight - translatedBounds.top });
+      this.element.css({
+        top: 'auto',
+        bottom: self.container.clientHeight - translatedBounds.top,
+      });
     } else {
       this.element.removeClass('align-bottom');
     }
@@ -88,7 +95,9 @@ define([
     if (this.autoscroll) {
       rectAfter = this.element[0].getBoundingClientRect();
       if (rectAfter.bottom > windowHeight || rectAfter.top < 100)
-        jQuery(document.body).scrollTop(50 + scrollTop + rectAfter.bottom - windowHeight);
+        jQuery(document.body).scrollTop(
+          50 + scrollTop + rectAfter.bottom - windowHeight
+        );
     }
   };
 
@@ -101,12 +110,23 @@ define([
       this.setPosition(selection.bounds);
       if (selection.annotation.annotation_id)
         history.pushState(null, null, '#' + selection.annotation.annotation_id);
-      else
-        history.pushState(null, null, window.location.pathname);
+      else history.pushState(null, null, window.location.pathname);
     } else {
       // We allow this method to be called with no arg - in this case, close the editor
       this.close();
     }
+  };
+
+  EditorBase.prototype.refreshSelection = function(annotation) {
+    if (
+      annotation.annotation_id !==
+      this.currentSelection.annotation.annotation_id
+    ) {
+      return;
+    }
+
+    this.currentSelection.annotation = annotation;
+    this.sectionList.setAnnotation(annotation);
   };
 
   /** Shorthand to check if the editor is currently open **/
@@ -124,10 +144,8 @@ define([
    */
   EditorBase.prototype.getMostRecentContext = function() {
     var quote = AnnotationUtils.getQuote(this.currentSelection.annotation);
-    if (quote)
-      return quote;
-    else
-      return this.sectionList.getMostRecentTranscription();
+    if (quote) return quote;
+    else return this.sectionList.getMostRecentTranscription();
   };
 
   EditorBase.prototype.close = function() {
@@ -144,5 +162,4 @@ define([
   };
 
   return EditorBase;
-
 });

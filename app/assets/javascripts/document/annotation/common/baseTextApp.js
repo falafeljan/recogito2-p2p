@@ -33,16 +33,18 @@ define([
       annotations = annotationView.readOnly(),
       loadIndicator = new LoadIndicator(),
       containerNode = document.getElementById('main'),
-      toolbar = new Toolbar(jQuery('.header-toolbar')),
       editor = Config.writeAccess
         ? new WriteEditor(containerNode, annotations, selector)
         : new ReadEditor(containerNode, annotations),
+      toolbar = new Toolbar(jQuery('.header-toolbar')),
       reapply = new Reapply(phraseAnnotator, annotations),
       colorschemeStylesheet = jQuery('#colorscheme'),
       relationsLayer = new RelationsLayer(
         containerNode,
         document.getElementById('relations')
       );
+
+    this.editor = editor;
 
     var initPage = function() {
       var storedColorscheme = localStorage.getItem(
@@ -180,6 +182,31 @@ define([
 
   App.prototype.postProcessAnnotations = function(annotations) {
     return AnnotationUtils.sortByOffsetDesc(annotations);
+  };
+
+  App.prototype.handleDiffReceived = function(inserted, changed, deleted) {
+    if (
+      this.editor.currentSelection &&
+      this.editor.currentSelection.annotation
+    ) {
+      var selectedAnnotation = this.editor.currentSelection.annotation;
+
+      for (var i = 0; i < changed.length; i++) {
+        if (changed[i].annotation_id === selectedAnnotation.annotation_id) {
+          this.editor.refreshSelection(changed[i]);
+          break;
+        }
+      }
+
+      for (var i = 0; i < deleted.length; i++) {
+        if (deleted[i].annotation_id === selectedAnnotation.annotation_id) {
+          if (this.editor.isOpen()) {
+            this.editor.close();
+          }
+          break;
+        }
+      }
+    }
   };
 
   return App;

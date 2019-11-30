@@ -71,7 +71,7 @@ define([
         .then(self.loadIndicator.destroy)
         .catch(self.onAnnotationsLoadError.bind(self))
         .then(self.loadIndicator.destroy)
-        .then(self.pollAnnotations.bind(self));
+        .then(self.subscribeToAnnotations.bind(self));
     });
   };
 
@@ -125,7 +125,7 @@ define([
     });
   };
 
-  BaseApp.prototype.pollAnnotations = function() {
+  BaseApp.prototype.subscribeToAnnotations = function() {
     if (!useP2P) {
       return;
     }
@@ -135,7 +135,7 @@ define([
       self.subscription = subscription;
       self.subscription.on('change', diff => {
         try {
-          var addedAnnotations = self.postProcessAnnotations(
+          var insertedAnnotations = self.postProcessAnnotations(
             self.filterAnnotations(
               self.preProcessAnnotations(denormalize(diff.inserted))
             )
@@ -145,9 +145,9 @@ define([
               self.preProcessAnnotations(denormalize(diff.changed))
             )
           );
-          if (addedAnnotations.length > 0) {
-            self.annotations.addOrReplace(addedAnnotations);
-            self.highlighter.initPage(addedAnnotations);
+          if (insertedAnnotations.length > 0) {
+            self.annotations.addOrReplace(insertedAnnotations);
+            self.highlighter.initPage(insertedAnnotations);
           }
           if (changedAnnotations.length > 0) {
             self.annotations.addOrReplace(changedAnnotations);
@@ -162,11 +162,21 @@ define([
           self.header.incrementAnnotationCount(
             diff.inserted.length - diff.deleted.length
           );
+
+          self.handleDiffReceived(
+            insertedAnnotations,
+            changedAnnotations,
+            deletedAnnotations
+          );
         } catch (err) {
           console.error('Error while loading annotations in real-time:\n', err);
         }
       });
     });
+  };
+
+  BaseApp.prototype.handleDiffReceived = function(inserted, changed, deleted) {
+    // noop
   };
 
   BaseApp.prototype.onAnnotationsLoadError = function(err) {
