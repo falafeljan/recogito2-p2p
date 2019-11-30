@@ -14,7 +14,7 @@ define([
     });
   };
 
-  var docUrl = 'hypermerge:/2Sd2WKQWfe8UtuBndq6ALmzJy8J4X9DxnQEp9Xxbqz3w'; // 'hypermerge:/8kXXgqWxUQAXNYUvLg1jAg6mv76RdDDp9AqLNYmfPY8W';
+  var docUrl = 'hypermerge:/8kXXgqWxUQAXNYUvLg1jAg6mv76RdDDp9AqLNYmfPY8W'; // 'hypermerge:/2Sd2WKQWfe8UtuBndq6ALmzJy8J4X9DxnQEp9Xxbqz3w';
   var getAnnotationId = function(annotationId) {
     return annotationId.split('/').pop();
   };
