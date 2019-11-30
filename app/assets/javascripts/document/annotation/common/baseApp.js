@@ -14,7 +14,6 @@ define([
     });
   };
 
-  var docUrl = 'hypermerge:/8kXXgqWxUQAXNYUvLg1jAg6mv76RdDDp9AqLNYmfPY8W'; // 'hypermerge:/2Sd2WKQWfe8UtuBndq6ALmzJy8J4X9DxnQEp9Xxbqz3w';
   var getAnnotationId = function(annotationId) {
     return annotationId.split('/').pop();
   };
@@ -37,22 +36,33 @@ define([
   console.log('User ID:', RecogitoTelemetry.getUserId());
 
   var BaseApp = function(annotations, highlighter, selector) {
+    var self = this;
     this.annotations = annotations;
     this.highlighter = highlighter;
     this.selector = selector;
     this.header = new Header();
 
-    this.hyperwellClient = new Hyperwell.HyperwellClient(
-      'hyperwell.kassel.works',
-      docUrl,
-      {
-        ssl: true,
+    wrapPromise(
+      $.ajax('https://recogito2-hyperwell-cnc.now.sh/notebooks.json')
+    ).then(function(notebooks) {
+      if (!notebooks[Config.documentId]) {
+        useP2P = false;
+        self.loadAnnotations();
+        return;
       }
-    );
 
-    RecogitoTelemetry.setUserId(Config.me);
-    RecogitoTelemetry.sendInit();
-    this.loadAnnotations();
+      var docUrl = notebooks[Config.documentId];
+      console.log('Document URL:', docUrl);
+      self.hyperwellClient = new Hyperwell.HyperwellClient(
+        'hyperwell.kassel.works',
+        docUrl,
+        { ssl: true }
+      );
+
+      RecogitoTelemetry.setUserId(Config.me);
+      RecogitoTelemetry.sendInit();
+      self.loadAnnotations();
+    });
   };
 
   BaseApp.prototype.loadAnnotations = function() {
@@ -62,7 +72,7 @@ define([
           return self.hyperwellClient.getAnnotations();
         }
       : function() {
-          wrapPromise(
+          return wrapPromise(
             API.listAnnotationsInPart(Config.documentId, Config.partSequenceNo)
           );
         };
