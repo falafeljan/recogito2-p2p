@@ -72,6 +72,10 @@ var encodeDocUrl = function encodeDocUrl(docUrl) {
   return Buffer.from(docUrl).toString('hex');
 };
 
+var getId = function getId(fullId) {
+  return fullId.indexOf('/') > -1 ? fullId.split('/').pop() : fullId;
+};
+
 var HyperwellClient =
 /*#__PURE__*/
 function () {
@@ -186,7 +190,7 @@ function () {
           switch (_context4.prev = _context4.next) {
             case 0:
               _context4.next = 2;
-              return regeneratorRuntime.awrap(fetch(annotation.id, {
+              return regeneratorRuntime.awrap(fetch(this._buildUrl(getId(annotation.id)), {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json'
@@ -207,7 +211,7 @@ function () {
               return _context4.stop();
           }
         }
-      });
+      }, null, this);
     }
   }, {
     key: "deleteAnnotation",
@@ -218,7 +222,7 @@ function () {
           switch (_context5.prev = _context5.next) {
             case 0:
               _context5.next = 2;
-              return regeneratorRuntime.awrap(fetch(annotation.id, {
+              return regeneratorRuntime.awrap(fetch(this._buildUrl(getId(annotation.id)), {
                 method: 'DELETE',
                 headers: {
                   'Content-Type': 'application/json'
@@ -239,7 +243,7 @@ function () {
               return _context5.stop();
           }
         }
-      });
+      }, null, this);
     }
   }, {
     key: "subscribeToAnnotations",
