@@ -13,6 +13,23 @@ define([
       return fauxPromise.then(resolve).fail(reject);
     });
   };
+  var promiseWaterfall = function(items, callback, handleError) {
+    return items.reduce((acc, val) => {
+      return acc.then(function(results) {
+        return callback(val)
+          .catch(function(err) {
+            if (typeof handleError === 'function') {
+              handleError(err, val);
+            } else {
+              throw err;
+            }
+          })
+          .then(function(result) {
+            return Promise.resolve(results.concat([result]));
+          });
+      });
+    }, Promise.resolve([]));
+  };
 
   var getAnnotationId = function(annotationId) {
     return annotationId.split('/').pop();
@@ -251,13 +268,11 @@ define([
     };
 
     var mutateP2P = function(annotations) {
-      return Promise.all(
-        annotations.map(function(annotation) {
-          return typeof annotation.id !== 'undefined'
-            ? self.hyperwellClient.updateAnnotation(annotation)
-            : self.hyperwellClient.createAnnotation(annotation);
-        })
-      );
+      return promiseWaterfall(annotations, function(annotation) {
+        return typeof annotation.annotation_id !== 'undefined'
+          ? self.hyperwellClient.updateAnnotation(annotation)
+          : self.hyperwellClient.createAnnotation(annotation);
+      });
     };
     var mutateDatabase = function(annotationStubs) {
       return wrapPromise(API.storeAnnotationBatch(annotationStubs));
@@ -270,6 +285,7 @@ define([
     self.header.showStatusSaving();
     mutation
       .then(function(annotations) {
+        annotations = denormalize(annotations);
         self.annotations.addOrReplace(annotations);
         self.header.incrementAnnotationCount(annotations.length);
         self.header.updateContributorInfo(Config.me);
@@ -324,6 +340,13 @@ define([
 
     this.highlighter.removeAnnotation(annotation);
     mutation
+      .catch(function(err) {
+        if (err.message.indexOf('JSON.parse') > -1 && useP2P) {
+          return;
+        } else {
+          throw err;
+        }
+      })
       .then(function() {
         self.annotations.remove(annotation);
         self.header.incrementAnnotationCount(-1);
@@ -340,16 +363,36 @@ define([
         return a.annotation_id;
       });
 
+    var mutateP2P = function(annotations) {
+      return promiseWaterfall(
+        annotations,
+        function(annotation) {
+          return self.hyperwellClient.deleteAnnotation(annotation);
+        },
+        function(err) {
+          if (err.message.indexOf('JSON.parse') > -1 && useP2P) {
+            return;
+          } else {
+            throw err;
+          }
+        }
+      );
+    };
+    var mutateDatabase = function(ids) {
+      return wrapPromise(API.deleteAnnotationBatch(ids));
+    };
+    var mutation = useP2P ? mutateP2P(annotations) : mutateDatabase(ids);
+
     self.header.showStatusSaving();
-    API.deleteAnnotationBatch(ids)
-      .done(function() {
+    mutation
+      .then(function() {
         self.highlighter.removeAnnotations(annotations);
         self.annotations.remove(annotations);
         self.header.incrementAnnotationCount(-annotations.length);
         self.header.updateContributorInfo(Config.me);
         self.header.showStatusSaved();
       })
-      .fail(function(error) {
+      .catch(function(error) {
         self.header.showSaveError();
       });
   };
