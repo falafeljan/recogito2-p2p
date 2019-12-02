@@ -126,12 +126,11 @@ define([
     var processed = this.postProcessAnnotations(
       this.filterAnnotations(denormalize(annotations))
     );
-    console.log(processed);
+    console.log('Initial load:', processed);
+
     this.annotations.add(processed);
     this.header.incrementAnnotationCount(processed.length);
-    // var startTime = new Date().getTime();
     this.highlighter.initPage(processed);
-    // console.log('took ' + (new Date().getTime() - startTime) + 'ms');
 
     if (urlHash) {
       preselected = this.highlighter.findById(urlHash);
@@ -252,8 +251,9 @@ define([
         jQuery.extend(annotationStub, annotation);
         self.highlighter.refreshAnnotation(annotationStub);
       })
-      .catch(function(error) {
-        self.header.showSaveError(error);
+      .catch(function(err) {
+        console.error(err);
+        self.header.showSaveError(err);
       });
   };
 
@@ -286,8 +286,10 @@ define([
     mutation
       .then(function(annotations) {
         annotations = denormalize(annotations);
-        self.annotations.addOrReplace(annotations);
-        self.header.incrementAnnotationCount(annotations.length);
+        if (!useP2P) {
+          self.annotations.addOrReplace(annotations);
+          self.header.incrementAnnotationCount(annotations.length);
+        }
         self.header.updateContributorInfo(Config.me);
         self.header.showStatusSaved();
 
@@ -299,8 +301,9 @@ define([
           self.highlighter.refreshAnnotation(stub);
         });
       })
-      .catch(function(error) {
-        self.header.showSaveError();
+      .catch(function(err) {
+        console.error(err);
+        self.header.showSaveError(err);
       });
   };
 
@@ -352,8 +355,9 @@ define([
         self.header.incrementAnnotationCount(-1);
         self.header.showStatusSaved();
       })
-      .catch(function(error) {
-        self.header.showSaveError(error);
+      .catch(function(err) {
+        console.error(err);
+        self.header.showSaveError(err);
       });
   };
 
@@ -386,13 +390,16 @@ define([
     self.header.showStatusSaving();
     mutation
       .then(function() {
-        self.highlighter.removeAnnotations(annotations);
-        self.annotations.remove(annotations);
-        self.header.incrementAnnotationCount(-annotations.length);
+        if (!useP2P) {
+          self.highlighter.removeAnnotations(annotations);
+          self.annotations.remove(annotations);
+          self.header.incrementAnnotationCount(-annotations.length);
+        }
         self.header.updateContributorInfo(Config.me);
         self.header.showStatusSaved();
       })
-      .catch(function(error) {
+      .catch(function(err) {
+        console.error(err);
         self.header.showSaveError();
       });
   };
