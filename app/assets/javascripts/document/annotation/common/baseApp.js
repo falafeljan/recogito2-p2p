@@ -268,11 +268,25 @@ define([
     };
 
     var mutateP2P = function(annotations) {
-      return promiseWaterfall(annotations, function(annotation) {
-        return typeof annotation.annotation_id !== 'undefined'
-          ? self.hyperwellClient.updateAnnotation(annotation)
-          : self.hyperwellClient.createAnnotation(annotation);
+      var newAnnotations = [],
+        changedAnnotations = [];
+      annotations.forEach(function(annotation) {
+        if (!annotation.annotation_id) {
+          newAnnotations.push(annotation);
+        } else {
+          changedAnnotations.push(annotation);
+        }
       });
+
+      return self.hyperwellClient
+        .createAnnotationsBatch(newAnnotations)
+        .then(function(newAnnotations) {
+          return self.hyperwellClient
+            .updateAnnotationsBatch(changedAnnotations)
+            .then(function(changedAnnotations) {
+              return Promise.resolve(newAnnotations.concat(changedAnnotations));
+            });
+        });
     };
     var mutateDatabase = function(annotationStubs) {
       return wrapPromise(API.storeAnnotationBatch(annotationStubs));
@@ -286,20 +300,24 @@ define([
     mutation
       .then(function(annotations) {
         annotations = denormalize(annotations);
+
         if (!useP2P) {
           self.annotations.addOrReplace(annotations);
           self.header.incrementAnnotationCount(annotations.length);
         }
+
         self.header.updateContributorInfo(Config.me);
         self.header.showStatusSaved();
 
-        annotations.forEach(function(annotation) {
-          // Note: it *should* be safe to assume that the annotations come in the same
-          // order as the original stubs, but we'll be a little defensive here, just in case
-          var stub = findStub(annotation);
-          jQuery.extend(stub, annotation);
-          self.highlighter.refreshAnnotation(stub);
-        });
+        if (!useP2P) {
+          annotations.forEach(function(annotation) {
+            // Note: it *should* be safe to assume that the annotations come in the same
+            // order as the original stubs, but we'll be a little defensive here, just in case
+            var stub = findStub(annotation);
+            jQuery.extend(stub, annotation);
+            self.highlighter.refreshAnnotation(stub);
+          });
+        }
       })
       .catch(function(err) {
         console.error(err);
@@ -368,19 +386,7 @@ define([
       });
 
     var mutateP2P = function(annotations) {
-      return promiseWaterfall(
-        annotations,
-        function(annotation) {
-          return self.hyperwellClient.deleteAnnotation(annotation);
-        },
-        function(err) {
-          if (err.message.indexOf('JSON.parse') > -1 && useP2P) {
-            return;
-          } else {
-            throw err;
-          }
-        }
-      );
+      return self.hyperwellClient.deleteAnnotationsBatch(annotations);
     };
     var mutateDatabase = function(ids) {
       return wrapPromise(API.deleteAnnotationBatch(ids));
